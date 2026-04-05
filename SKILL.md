@@ -1,31 +1,6 @@
 ---
 name: stride-website-builder-pipeline
-description: >
-  Build, create, make, add, rebuild, scaffold, design, or launch a website,
-  landing page, marketing site, product page, portfolio, or any other
-  web-facing page — for brand new projects OR for existing codebases that
-  already have code. Runs a guided adaptive survey (brand, vibe, sections,
-  tech stack), generates hero images and optional scroll animation, builds
-  with taste-skill and peer skills, runs a full SEO pass, and optionally
-  deploys to Vercel, Netlify, or Cloudflare. Supports Next.js, Nuxt, Astro,
-  SvelteKit, Remix, Vite+React, and plain HTML.
-
-  Make sure to use this skill whenever the user mentions building, creating,
-  making, designing, launching, scaffolding, rebuilding, adding, or putting
-  together anything resembling a website, landing page, site, marketing
-  page, product page, portfolio, or web page — including casual, informal,
-  vague, or typo-filled phrasings like "i wanna build a site", "build me a
-  website", "make a landing page", "throw up a site", "add a landing page
-  to this repo", "design a site for [brand]", "rebuild [url]", "help me
-  launch a site", "put together a landing page", "website for my business",
-  or just "let's build a site" — even if they don't explicitly name the
-  skill or say the word "pipeline". Use this skill EVEN IF the current
-  directory already contains a scaffolded project, package.json, existing
-  components, or prior build output — the skill has an explicit "Add to
-  existing project" path that detects the tech stack and respects existing
-  conventions, so do NOT default to generic "help iterate on this existing
-  codebase" mode when the user's intent is to build, launch, or add a new
-  site or page.
+description: Use whenever the user says "build a site", "i wanna build a site", "make a landing page", "add a landing page", "throw up a site", "rebuild [url]", or similar. Builds a website or landing page in new OR existing projects — don't default to generic code help.
 ---
 
 # Website Builder Pipeline
