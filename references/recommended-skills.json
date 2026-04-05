@@ -1,0 +1,207 @@
+{
+    "tier_1_critical": [
+        {
+            "name": "taste-skill",
+            "creator": "Leon Lin (Leonxlnx)",
+            "install": "npx skills add https://github.com/Leonxlnx/taste-skill",
+            "what_it_does": "High-Agency Frontend skill collection. 7 sub-skills (taste, output, soft, minimalist, brutalist, redesign, stitch) with 3 tunable dials (DESIGN_VARIANCE, MOTION_INTENSITY, VISUAL_DENSITY). Stops AI from generating boring generic slop.",
+            "github_stars": 2900,
+            "license": "MIT",
+            "in_default_stack": true,
+            "role": "rules_and_dials",
+            "note": "ALWAYS install. Base anti-slop ruleset for every project. Not an aesthetic opinion — it bans bad patterns and enforces premium ones via tunable dials.",
+            "required_for": "all_tiers"
+        },
+        {
+            "name": "anthropic-frontend-design",
+            "creator": "Anthropic",
+            "install": "built-in to Claude Code",
+            "what_it_does": "Official Anthropic front-end design skill. Base skill that many creators modify. Polished web designs avoiding common cliches.",
+            "in_default_stack": false,
+            "is_aesthetic_opinion": true,
+            "role": "aesthetic_opinion_candidate",
+            "note": "One of the three aesthetic-opinion candidates. Pick ONE per project: this, mager, or UIUX Pro Max. Never stack with another aesthetic-opinion skill.",
+            "required_for": "all_tiers"
+        },
+        {
+            "name": "cc-nano-banana",
+            "creator": "kkoppenhaver",
+            "install": "git clone https://github.com/kkoppenhaver/cc-nano-banana ~/.claude/skills/nano-banana/",
+            "what_it_does": "Integrates NanoBanana via Gemini CLI directly inside Claude Code. Text-to-image, image editing, photo restoration, icons, patterns.",
+            "github_stars": 34,
+            "requires_env": ["GEMINI_API_KEY"],
+            "in_default_stack": true,
+            "role": "image_generation_tool",
+            "note": "Install if GEMINI_API_KEY is set. Not an aesthetic opinion — it's the image-generation tool. Safe to co-install with any aesthetic skill.",
+            "required_for": "budget_and_pro"
+        }
+    ],
+    "tier_2_specialized": [
+        {
+            "name": "video-to-website",
+            "creator": "Nate Herk",
+            "install": "manual — Nate Herk Skool community (free)",
+            "what_it_does": "Scroll-driven animated 3D websites. Self-improving (gets better with every build).",
+            "auto_install": false,
+            "skool_gated": true,
+            "link": "https://www.skool.com/nate-herk-ai-automation-2790"
+        },
+        {
+            "name": "nate-front-end-design",
+            "creator": "Nate Herk",
+            "install": "manual — Nate Herk Skool community (free)",
+            "what_it_does": "Modified version of Anthropic's front-end design skill, optimized for animated product landing pages.",
+            "auto_install": false,
+            "skool_gated": true
+        },
+        {
+            "name": "3d-website-builder",
+            "creator": "Jack Roberts",
+            "install": "manual — Jack Roberts Skool community (free)",
+            "what_it_does": "Scroll-stop websites with animated 3D product sections. Skill creator integration for custom prompts.",
+            "auto_install": false,
+            "skool_gated": true
+        },
+        {
+            "name": "asset-generation",
+            "creator": "Jack Roberts",
+            "install": "manual — Jack Roberts Skool community (free)",
+            "what_it_does": "Generates optimized NanoBanana prompts. Pairs with 3D Website Builder skill.",
+            "auto_install": false,
+            "skool_gated": true
+        },
+        {
+            "name": "apple-level-blueprint",
+            "creator": "Ed Hill",
+            "install": "manual — description links + Skool community",
+            "what_it_does": "Complete agent setup: brand.json + animation → full website. Auto quality checklist, reprompts on bad images.",
+            "auto_install": false,
+            "skool_gated": true
+        },
+        {
+            "name": "uiux-pro-max",
+            "creator": "Chase AI / community",
+            "install": "manual — GitHub repo (search: UI-UX-Pro-Max-Skill)",
+            "what_it_does": "UX strategist with Design System Generator. Industry-specific design ideas, back-and-forth UX refinement.",
+            "endorsed_by": "Nick Babich, UX Planet",
+            "auto_install": false
+        }
+    ],
+    "tier_3_community": [
+        {
+            "name": "mager/frontend-design",
+            "creator": "mager",
+            "install": "npx skills add mager/frontend-design",
+            "what_it_does": "Personal design taste as a skill. Dark mode, JetBrains Mono + Space Grotesk, neon accents, hover micro-interactions. Generate new UI, restyle existing code, provide design guidance.",
+            "in_default_stack": false,
+            "is_aesthetic_opinion": true,
+            "recommended_for_vibes": ["brutalist", "minimalist", "dark-neon-saas"],
+            "note": "Pick as the SINGLE aesthetic opinion skill only when the vibe matches. Do not stack with other aesthetic-opinion skills."
+        },
+        {
+            "name": "designer-skills",
+            "creator": "MC Dean (Owl-Listener)",
+            "install": "git clone https://github.com/Owl-Listener/designer-skills",
+            "what_it_does": "63 design skills + 27 commands. 8 plugins: research, systems, strategy, UI, interaction, prototyping, design ops, toolkit utilities.",
+            "in_default_stack": false,
+            "recommended_for": "pro_tier_opt_in",
+            "note": "Heavy bundle — only install when the project specifically calls for research/strategy/design-ops depth beyond taste-skill. Do not co-install with other aesthetic-opinion skills."
+        },
+        {
+            "name": "typeui-sh",
+            "creator": "TypeUI.sh",
+            "install": "visit typeui.sh and download theme files",
+            "what_it_does": "48 website theme files as instructions for Claude. Pick a visual style, customize colors/fonts via CLI.",
+            "auto_install": false,
+            "url": "https://typeui.sh"
+        },
+        {
+            "name": "kousen-nanobanana-prompts",
+            "creator": "Kousen",
+            "install": "https://gist.github.com/kousen/f7c66a70cefe90b12c8b5285688a0016",
+            "what_it_does": "Generates optimized NB2/Pro prompts per Google's official guidance.",
+            "auto_install": false
+        },
+        {
+            "name": "accesslint",
+            "creator": "community",
+            "install": "search claude-code-skills for accesslint",
+            "what_it_does": "WCAG 2.2 accessibility compliance checker. Recommended in Snyk's top 8 Claude skills for UI/UX engineers.",
+            "in_default_stack": false,
+            "recommended_for": "pro_tier_opt_in",
+            "required_if_seo_tier": "full",
+            "note": "Utility skill — safe to co-install with aesthetic skills because it doesn't touch design rules, only WCAG compliance."
+        },
+        {
+            "name": "agent-browser",
+            "creator": "Vercel Labs",
+            "install": "npm install -g agent-browser && agent-browser install",
+            "install_linux_deps": "agent-browser install --with-deps",
+            "what_it_does": "Rust CLI for browser automation optimized for AI agents. Navigate, screenshot, snapshot accessibility tree, interact with elements via semantic locators (role=button name=\"Submit\"), network interception. Used for automated visual verification and iteration after build + SEO pass.",
+            "repo": "https://github.com/vercel-labs/agent-browser",
+            "auto_install": true,
+            "requires_env": [],
+            "required_for": "verification_phase",
+            "critical_for_pipeline": true,
+            "alternatives": ["Playwright MCP (heavier)", "Puppeteer (needs wrapper)"]
+        },
+        {
+            "name": "paper-design-mcp",
+            "creator": "Paper.design",
+            "install": "claude mcp add paper --transport http http://127.0.0.1:29979/mcp --scope user",
+            "what_it_does": "Local MCP server for Paper.design (modern design tool, macOS + Windows). 24 tools for reading/writing design files: get_jsx, get_screenshot, get_computed_styles, write_html, update_styles, create_artboard, etc. Alternative to Figma + Stitch for designers who use Paper.",
+            "requires": "Paper Desktop app running with a file open",
+            "in_default_stack": false,
+            "requires_env": [],
+            "url": "https://paper.design/docs/mcp",
+            "recommended_if_using": "paper_as_design_tool",
+            "note": "Only install if the user is actively designing in Paper. Not an aesthetic-opinion skill so it does not conflict with taste-skill or the chosen opinion skill."
+        },
+        {
+            "name": "leon-furze-astro-skills",
+            "creator": "Leon Furze",
+            "install": "git clone https://github.com/lfurze/claude-skills",
+            "what_it_does": "Claude Code skill for Astro websites. Design patterns encoded so Claude follows them automatically.",
+            "auto_install": false,
+            "recommended_if_framework": "astro"
+        }
+    ],
+    "install_order": [
+        "tier_1_critical",
+        "tier_2_specialized (offer skool-gated ones as manual)",
+        "tier_3_community (install based on vibe archetype, ONE aesthetic opinion only)"
+    ],
+    "installation_rules": {
+        "never_auto_execute": true,
+        "always_show_commands_first": true,
+        "confirm_each_install": true,
+        "skool_gated_are_always_manual": true,
+        "check_if_already_installed_first": true,
+        "never_stack_aesthetic_opinions": true,
+        "cap_total_skills_at": 3
+    },
+    "image_providers": {
+        "preferred": {
+            "name": "wavespeed",
+            "env_var": "WAVESPEED_API_KEY",
+            "wrapper": "references/call-wavespeed.py",
+            "primary_model": "google/gemini-3-pro-image/text-to-image",
+            "lock_pair_model": "google/nano-banana-pro/edit-multi",
+            "cost_per_image_usd": 0.025,
+            "resolution": "4K native",
+            "note": "Gemini 3 Pro Image is the newest Gemini-family image model. 4K native output means no upscale needed for retina desktop heroes. Cheaper per image than Nano Banana Pro on Wavespeed. Currently Wavespeed-only (not on Kie.ai as of 2026-04)."
+        },
+        "fallback": {
+            "name": "kie_ai",
+            "env_var": "KIE_AI_API_KEY",
+            "wrapper": "references/call-kie.py",
+            "primary_model": "nanoBanana2",
+            "premium_model": "nanoBananaPro",
+            "cost_per_image_usd_range": "0.013 to 0.030",
+            "resolution": "2K",
+            "note": "Battle-tested default, proven across all creator tutorials. Use when Wavespeed key is not set. Excellent at targeted edits via Nano Banana Pro Edit."
+        },
+        "selection_logic": "Prefer Wavespeed Gemini 3 Pro Image if WAVESPEED_API_KEY is set. Fall back to Kie.ai Nano Banana if only KIE_AI_API_KEY is set. Error and prompt the user if neither is set.",
+        "video_provider_always": "kie_ai (Kling 3.0) — Wavespeed does not replace Kie.ai for video in this pipeline"
+    }
+}
