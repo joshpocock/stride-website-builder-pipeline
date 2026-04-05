@@ -151,48 +151,9 @@ Four possible paths based on Q2. `brand.json` is the single output format regard
 
 ## Phase 2.5: Stitch Layout Generation (optional)
 
-**Skip this phase entirely** if Stitch MCP was not detected in Phase 0 OR if the user declined the Stitch opt-in during preflight.
+**Skip this phase if Stitch MCP was not detected in Phase 0 or the user declined.** If active, Stitch (Google's free AI UI design tool, Gemini 3.1 Pro) generates themed HTML + Tailwind scaffolds per section. We use them as structural scaffolding for Phase 6 — Claude ports the output to the chosen tech stack and layers in animations, real images, and taste-skill rules. $0 cost, 2-5 min typical (5-12 with optional variants).
 
-Stitch is Google's free AI-native UI design tool (powered by Gemini 3.1 Pro / Gemini 3 Flash). It generates themed HTML + Tailwind scaffolds per section. We use it as **structural scaffolding** for Phase 6 — not as finished code. Claude ports the Stitch output to the chosen tech stack and layers in animations, real images, taste-skill rules, and SEO.
-
-**Flow:**
-
-1. **Create a Stitch project.** Call `mcp__stitch__create_project` with `title = {{brand_name}}`. Capture the returned `projectId`.
-
-2. **Map `brand.json` → Stitch design system.** Call `mcp__stitch__create_design_system` with `projectId` and a `DesignTheme` built from:
-   - `customColor` ← `brand.colors.primary`
-   - `overrideSecondaryColor` ← `brand.colors.secondary`
-   - `overrideTertiaryColor` ← `brand.colors.accent`
-   - `headlineFont` ← closest enum match to `brand.fonts.heading`. Supported enum: `GEIST`, `SPACE_GROTESK`, `INTER`, `MANROPE`, `PLUS_JAKARTA_SANS`, `DM_SANS`, `IBM_PLEX_SANS`, `SORA`, `MONTSERRAT`, `EB_GARAMOND`, `NEWSREADER`, `LITERATA`, `DOMINE`, `LIBRE_CASLON_TEXT`, `SOURCE_SERIF_FOUR`, `RUBIK`, `NUNITO_SANS`, `WORK_SANS`, `LEXEND`, `EPILOGUE`, `BE_VIETNAM_PRO`, `PUBLIC_SANS`, `METROPOLIS`, `SOURCE_SANS_THREE`, `HANKEN_GROTESK`, `ARIMO`, `SPLINE_SANS`, `NOTO_SERIF`. If the brand font isn't in the enum, pick the visually-closest match and record the real font name in `designMd`.
-   - `bodyFont` ← same logic
-   - `colorMode` ← `DARK` if `brand.colors.bg` has luminance < 0.3, else `LIGHT`
-   - `colorVariant` ← mapped from Q6 vibe: Brutalist → `MONOCHROME`, Minimalist → `NEUTRAL`, Ethereal Glass → `TONAL_SPOT`, Soft Structuralism → `EXPRESSIVE`, Editorial Luxury → `FIDELITY`, Custom → `VIBRANT`
-   - `roundness` ← mapped from vibe: Brutalist → `ROUND_FOUR`, Editorial Luxury → `ROUND_EIGHT`, Minimalist/Soft → `ROUND_TWELVE`, Ethereal Glass → `ROUND_FULL`
-   - `designMd` ← free-form markdown describing the vibe archetype, the taste-skill dial tuning (DESIGN_VARIANCE, MOTION_INTENSITY, VISUAL_DENSITY), the banned patterns (no AI clichés, no Inter-as-heading, no 3-column equal rows), and the real brand font names if any had to fall back
-3. Immediately call `mcp__stitch__update_design_system` to activate it on the project.
-
-4. **Generate one screen per selected Q11 section.** For each section, call `mcp__stitch__generate_screen_from_text`:
-   - `projectId` ← the one from step 1
-   - `deviceType` ← `DESKTOP` (we generate mobile responsiveness in Phase 6)
-   - `modelId` ← `GEMINI_3_1_PRO` (higher quality) or `GEMINI_3_FLASH` (faster) — default to Pro, fall back to Flash if the user hits rate limits
-   - `prompt` ← templated string: *"{section_name} section for {brand_name}, a {brand.description}. Vibe: {vibe_archetype}. Audience: {target_audience}. {section-specific instructions from `references/build-prompts/stitch-section-prompts.md`}. Must include: {section_required_elements}. Avoid: centered hero unless Editorial Luxury, 3-column equal card rows, AI clichés like Elevate/Seamless/Unlock/Empower."*
-   - Important: this call is async and "can take a few minutes." Run section generations **in parallel** where possible (multiple `generate_screen_from_text` tool calls in one assistant message) to keep total wall time under ~3 minutes for a 6-section landing page.
-
-5. **Optional variants.** If the user opted in to "show me alternatives for key sections" during preflight, call `mcp__stitch__generate_variants` on the hero + pricing + CTA screens with `variantOptions = {variantCount: 3, creativeRange: EXPLORE, aspects: [LAYOUT, COLOR_SCHEME]}`. Skip variants by default — they triple generation time.
-
-6. **User selection.** Call `mcp__stitch__list_screens` to enumerate everything generated. For each section, present the screen(s) to the user with a brief description pulled from `get_screen`, and ask them to pick one per section. Support "keep all" and "regenerate this one with feedback" via `edit_screens`.
-
-7. **Extract HTML + Tailwind.** For each selected screen, call `mcp__stitch__get_screen` and pull the HTML + Tailwind output. Save to `{project_dir}/stitch-scaffold/{section_name}.html`.
-
-8. **Hand off to Phase 6.** The Phase 6 build prompt is augmented with a new instruction block: *"Structural scaffolding is available in `./stitch-scaffold/`. For each section, the corresponding `.html` file is a Stitch-generated Tailwind layout themed to the brand. Port these to {{tech_stack}} components — preserve layout structure, spacing, and hierarchy — but ADD: scroll-bound hero animation (use `assets/hero.mp4`), real Nano Banana / Gemini hero images (replace any placeholder images), taste-skill anti-slop overrides, framework idioms (e.g., Next.js `<Image>` instead of `<img>`, Astro `.astro` components instead of raw HTML), semantic HTML5 landmarks, and responsive breakpoints Stitch didn't cover."*
-
-**Cost:** $0 (Stitch is free, Google hosts the Gemini inference).
-
-**Time:** 2-5 min without variants, 5-12 min with variants. Skill should tell the user the estimate before starting.
-
-**Failure handling:** If any `generate_screen_from_text` call fails or times out, try once with `modelId = GEMINI_3_FLASH` as a fallback. If that also fails, skip that section — Phase 6 build will generate the layout from scratch for sections without a scaffold. Never block the whole pipeline on a Stitch failure.
-
-**Reference:** See `references/build-prompts/stitch-section-prompts.md` for the per-section prompt templates.
+**Read `references/phases/phase-2-5-stitch.md` for the full flow** — brand.json → Stitch `DesignTheme` mapping (font enum, color variant, roundness), per-section `generate_screen_from_text` calls, parallelization, variants, user selection, and Phase 6 handoff.
 
 ---
 
@@ -306,29 +267,9 @@ Download the MP4 to `project/assets/hero.mp4`. Run ffmpeg to extract a mobile st
 
 ### 4c. Paper.design Graphic Exports (optional)
 
-**Skip this sub-phase entirely** if Paper.design MCP was not detected in Phase 0 (MCP not registered OR HEAD check to `http://127.0.0.1:29979/mcp` failed OR user declined the Paper opt-in during preflight).
+**Skip this sub-phase if Paper.design MCP was not detected, not running, or the user declined.** If active, Paper's `get_screenshot` tool exports composed graphics from the currently-open Paper file as PNGs — useful for decorative section art, typographic compositions, and custom brand graphics the user already designed. Complementary to Nano Banana / Gemini, not competing (those generate photorealistic imagery from prompts; Paper exports user-composed visuals). $0 cost, ~1 sec per export.
 
-Paper.design is a code-native design tool with a local MCP server. While its primary job is UI layout → code (which overlaps with Stitch and is NOT how we use it here), its `get_screenshot` tool lets us export composed graphics from any node on the canvas as PNGs — useful for decorative section art, typographic compositions, or custom brand graphics that the user has already designed in Paper but wants baked into the built site.
-
-**Flow:**
-
-1. **Enumerate artboards.** Call the Paper MCP's `get_tree_summary` (or `get_basic_info` + `get_children` on the root) to list top-level artboards in the currently-open Paper file. Paper's MCP only exposes the currently-open file, so tell the user: *"I see Paper is running with `{filename}` open. It contains these artboards: {list}. Want to use any of them as section graphics in the built site?"*
-
-2. **User selection.** For each artboard the user wants to use:
-   - Ask which section of the built site it should live in (dropdown of Q11 sections + "hero background" + "section divider" + "footer graphic" + "other")
-   - Ask the desired output size (default: 2x the target display size for retina)
-
-3. **Export via screenshot.** For each selected artboard, call Paper MCP `get_screenshot` with the node ID and size. Save the returned PNG to `{project_dir}/assets/graphics/{section_name}-{artboard_name}.png`.
-
-4. **Update the build prompt.** Phase 6 build prompt is augmented: *"Additional graphics from Paper.design are available in `./assets/graphics/`. Each file is named `{section}-{description}.png` — place it in that section as a decorative element, section background, or accent graphic per the user's intent. These are pre-composed static images — do NOT regenerate or replace them with AI-generated alternatives."*
-
-**Cost:** $0 (local MCP, no network calls beyond localhost).
-
-**Time:** ~1 second per artboard export.
-
-**Failure handling:** If Paper stops responding mid-export (user closed the app, file was closed), stop cleanly — save whatever was exported so far, tell the user, and continue to Phase 5. Do not block the pipeline.
-
-**Why this is complementary, not competing, with Nano Banana / Gemini:** Paper exports are for things the user *designed themselves* — composed typography, layered shapes, branded patterns, custom iconography. Nano Banana / Gemini generate photorealistic imagery from prompts. Different jobs, no overlap.
+**Read `references/phases/phase-4c-paper.md` for the full flow** — artboard enumeration, user placement selection, `get_screenshot` export, build prompt augmentation, and failure handling.
 
 ---
 
@@ -396,21 +337,9 @@ The filled prompt invokes Claude Code with:
 
 ### Mid-build: 21st.dev Magic MCP component injection (optional)
 
-**Only applies if 21st.dev Magic MCP was detected in Phase 0 and the user opted in during preflight.**
+**Skip if 21st.dev Magic MCP was not detected or the user declined.** If active, 21st.dev injects premium pre-built React/Tailwind components into standardized sections (Pricing, Testimonials, grid Features, FAQ, Footer, Nav) instead of having Claude build them from scratch. Never eligible for Hero, About, or custom sections — those stay custom-built.
 
-21st.dev Magic is a premium component library exposed as an MCP — it returns production-ready React/Tailwind components for common landing-page patterns (pricing tables, testimonial carousels, feature grids, footers, nav bars). Instead of having Claude build these from scratch, the skill can inject 21st.dev components into sections where a good premade exists.
-
-**Which sections benefit:** Pricing, Testimonials, Features (only for grid-heavy patterns), FAQ, Footer, Nav. Do NOT use 21st.dev for Hero — hero is too brand-specific and the cinematic animation path makes premades wrong-fit.
-
-**Flow during Phase 6 build:**
-
-1. After Claude enters Plan Mode but before executing, the plan should list which sections will use 21st.dev components vs which will be custom-built.
-2. For each 21st.dev-eligible section, Claude calls the 21st.dev Magic MCP search/fetch tool with a prompt describing the section's needs (brand colors from `brand.json`, vibe from Q6, content from `brand.json` or survey).
-3. 21st.dev returns 1-3 component options. Claude picks the best fit or asks the user if preference is ambiguous.
-4. The component is inserted into the build, then styled to match brand tokens (colors, fonts, spacing from the design system).
-5. Claude logs which sections used 21st.dev vs custom in `build-log.md` for the Phase 9 learnings step.
-
-**Conflict handling:** If Phase 2.5 Stitch scaffolds exist for a section AND 21st.dev has a component for it, 21st.dev wins for Pricing/Testimonials/Footer/Nav (components beat scaffolds for standardized patterns) and Stitch wins for Hero/Features/About/Custom sections (scaffolds beat components for brand-specific layouts). Document the choice in the plan so the user can override.
+**Read `references/phases/phase-6-components.md` for the full flow** — eligibility rules, per-section query pattern, brand-token styling, and conflict handling with Phase 2.5 Stitch scaffolds.
 
 Dev server spins up when done. User verifies, gives feedback, skill iterates.
 
@@ -483,6 +412,9 @@ Also offer to update specific `build-prompts/*.md` files with learnings (Nate He
 
 | File | Purpose |
 |---|---|
+| `references/phases/phase-2-5-stitch.md` | Full Stitch flow — load only when Stitch MCP is detected and user opted in |
+| `references/phases/phase-4c-paper.md` | Full Paper.design export flow — load only when Paper MCP is running and user opted in |
+| `references/phases/phase-6-components.md` | Full 21st.dev mid-build injection flow — load only when 21st.dev MCP is detected |
 | `references/survey-questions.md` | Full survey spec with adaptive rules |
 | `references/vibe-archetypes.md` | 6 preset aesthetics with dials + sample references |
 | `references/env-template.env` | All env vars the skill can use |
