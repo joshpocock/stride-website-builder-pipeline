@@ -54,7 +54,15 @@ Phase 9: LEARNINGS LOG (self-improving)
 Before asking any questions, run a preflight audit. Show the user what is ready vs. what needs setup.
 
 1. Check for required CLIs: `ffmpeg`, `node`, `python`, `gh`, `vercel`, `netlify`, `lighthouse`
-2. Check for environment variables (see `references/env-template.env`)
+2. **Check for environment variables across multiple sources** (see `references/env-template.env` for the full list). Load values in this order, with earlier sources winning:
+   1. **Shell environment** (`process.env`) — primary source
+   2. **`.env` in the current working directory** — if present, parse and merge any keys that weren't already set in the shell
+   3. **`.env` in parent directories up to the project root** — walk upward from cwd until hitting a `.git/`, `package.json`, `pyproject.toml`, or 3 levels up; merge any `.env` files found along the way
+   4. **`.env` in the skill's own root directory** — `~/.claude/skills/stride-website-builder-pipeline/.env` for user-scope installs, or `<project>/.claude/skills/stride-website-builder-pipeline/.env` for project-scope installs. Merge as the lowest-priority fallback.
+
+   Why this matters: users commonly keep their keys in a `.env` file rather than exporting them to the shell every session. If Phase 0 only checks `process.env`, legitimate keys will look unset and the preflight will misreport. Always check files too. Shell values always win over file values so users can temporarily override a key without editing files.
+
+   Implementation: run `cat ./.env 2>/dev/null`, `cat ../.env 2>/dev/null`, and `cat <skill-root>/.env 2>/dev/null`, parse each for `KEY=value` lines, and merge into a working env dict. Do NOT modify the user's shell. Only use the merged dict for this Phase 0 status check and for passing to the script subprocesses that need keys (e.g., `scripts/call-wavespeed.py`).
 3. Check for installed peer skills: `taste-skill`, `front-end design`, `cc-nano-banana`, `mager/frontend-design`
 4. Check for `brand.json` in current directory (if present, offer to reuse)
 5. Check `~/.claude/website-builder/history.json` for prior runs (memory-aware)
@@ -87,7 +95,8 @@ Use `AskUserQuestion` for each step. Adapt — skip questions when answers from 
 See `references/survey-questions.md` for the full question spec with all options, adaptive rules, and escape hatches. Summary:
 
 1. **Project type** — Landing / Multi-page / Full app / Portfolio / **Add to existing project**
-2. **Tech stack** — Next.js / Nuxt / Astro / SvelteKit / Remix / Vite+React / Plain HTML / AI decides. *Skipped if Q1 = "Add to existing project"; stack is auto-detected from the repo.*
+   - **Q1b follow-up if "Add to existing project"**: pick a mode — **Add** (preserve code, extend), **Rebuild** (keep infrastructure, rewrite UI), or **Replace** (archive everything, start fresh in the same repo). Always ask — do not default. Rebuild and Replace delete/move files and must run inside Plan Mode with the file list surfaced before approval.
+2. **Tech stack** — Next.js / Nuxt / Astro / SvelteKit / Remix / Vite+React / Plain HTML / AI decides. *Skipped if Q1 = "Add to existing project" (any mode); stack is auto-detected from the repo.*
 3. **Brand source** — URL (Firecrawl) / Manual / Screenshots / Build from scratch / Let AI decide
 4. **Business info** — Company name, tagline, one-sentence description (pre-filled from Firecrawl if available)
 5. **Target audience** — Free text
@@ -275,7 +284,12 @@ Download the MP4 to `project/assets/hero.mp4`. Run ffmpeg to extract a mobile st
 
 ## Phase 5: Project Scaffold
 
-**Skip this entire phase if Q1 = "Add to existing project".** Instead: `cd` to the user-provided project root, detect the existing tech stack (look for `package.json`, `astro.config.*`, `svelte.config.*`, `next.config.*`, `remix.config.*`, `vite.config.*`, plain `index.html`), read existing conventions (component folder structure, CSS approach, routing pattern), and drop `brand.json` + `assets/` into a sensible location inside the existing repo (typically `public/brand.json` and `public/assets/` or `src/assets/`). Do NOT overwrite existing files without explicit confirmation.
+Behavior depends on Q1 + Q1b:
+
+- **Q1 = new project** (Landing / Multi-page / Full app / Portfolio) → run the normal scaffold flow below using `scripts/scaffold-project.py`.
+- **Q1 = "Add to existing project", Q1b = Add** → skip scaffold. `cd` to the user-provided project root, detect the existing tech stack (`package.json`, `astro.config.*`, `svelte.config.*`, `next.config.*`, `nuxt.config.*`, `remix.config.*`, `vite.config.*`, plain `index.html`), read existing conventions (component folder layout, CSS approach, routing pattern), and drop `brand.json` + `assets/` into a sensible location inside the existing repo (typically `public/brand.json` and `public/assets/` or `src/assets/`). Never overwrite existing files without explicit confirmation.
+- **Q1 = "Add to existing project", Q1b = Rebuild** → skip scaffold creation, but do the detection work (stack, conventions, preserved infrastructure). Phase 6 handles the tear-down-and-rewrite step with a file deletion list in Plan Mode. Drop `brand.json` + `assets/` in the same location as Add mode.
+- **Q1 = "Add to existing project", Q1b = Replace** → run the in-place archive-then-scaffold flow. First move everything except `.git/`, `node_modules/`, and `.env*` files into `./archive-{YYYY-MM-DD-HHMM}/` (use the current timestamp, UTC). Then run `scripts/scaffold-project.py` in the now-empty repo directory. Tell the user the archive path and that they can delete it once they're satisfied with the rebuild.
 
 For new projects, run `scripts/scaffold-project.py` to create:
 
@@ -317,9 +331,25 @@ Scaffolders (`create-next-app`, `nuxi init`, `npm create astro`, `npm create sve
 
 ## Phase 6: Build
 
-**If Q1 = "Add to existing project":** use `site-build-premium.md` as a guide but adapt to the existing codebase — match the detected stack's patterns, reuse existing components where possible, and stay inside the user's folder conventions. Never refactor unrelated code.
+Build behavior depends on Q1 + Q1b:
 
-Otherwise, read `references/build-prompts/site-build-premium.md` (for premium tier) or `site-build-minimal.md` (for simpler runs) and fill in template variables from the survey:
+**Q1b = Add** (existing project, preserve): use `site-build-premium.md` as a guide but adapt to the existing codebase — match the detected stack's patterns, reuse existing components where possible, stay inside the user's folder conventions, never refactor unrelated code. This is the "extend, don't disrupt" mode.
+
+**Q1b = Rebuild** (existing project, rewrite UI): this is the destructive mode and requires extra care. Before writing or deleting anything:
+
+1. Enumerate every UI component and page file in the repo. Look in `src/app/`, `src/components/`, `src/pages/`, `app/`, `components/`, `pages/`, `src/routes/` — wherever the detected stack puts them. Also include `app/globals.css` or equivalent root stylesheet.
+2. Look for spec docs in the repo: `*SPEC*.md`, `*-SPEC.md`, `AGENTS.md`, `PROJECT.md`, `CLAUDE.md`, and any README with detailed requirements. Read them — they carry user intent the survey doesn't capture.
+3. Enter Plan Mode. The plan must have three clearly-labeled sections:
+   - **Files to delete** (full list of UI components and pages, with paths)
+   - **Files to preserve** (configs, API routes, `public/*`, env files, spec docs, `node_modules/`, `.git/`)
+   - **Files to create** (new component/page layout per survey + spec)
+4. Wait for user approval. If the user says "skip the delete of X", respect it — remove X from the delete list but keep the rest.
+5. After approval, execute: delete the files in the delete list, then build the new UI following the survey answers + spec docs + existing infrastructure conventions (import aliases, TypeScript/JavaScript choice, CSS approach).
+6. If the repo is not a git repo or has uncommitted changes, warn the user in the plan and recommend a commit before proceeding. Do not hard-block — some users work without git.
+
+**Q1b = Replace** (existing project, archive and restart): Phase 5 already archived everything into `./archive-{timestamp}/`. Phase 6 runs as a greenfield build in the now-empty repo. No special handling beyond a one-line reminder at the end: *"Your original files are in ./archive-{timestamp}/ — delete the archive folder once you're happy with the rebuild."*
+
+**New project** (Q1 = Landing / Multi-page / Full app / Portfolio): read `references/build-prompts/site-build-premium.md` (for premium tier) or `site-build-minimal.md` (for simpler runs) and fill in template variables from the survey:
 - `{{brand_name}}`, `{{tagline}}`, `{{colors}}`, `{{fonts}}`
 - `{{vibe}}`, `{{motion_intensity}}`, `{{design_variance}}`, `{{visual_density}}`
 - `{{sections}}`, `{{animation_type}}`

@@ -21,7 +21,28 @@ Every question supports "Skip" / "Let AI decide" / "Let me paste manually" as es
 
 **adaptive:**
 - If "Full app" → trigger Lovable/Bolt recommendation path instead of Claude Code from scratch
-- If "Add to an existing project" → Q2 (tech stack) is skipped and we detect stack from the repo; Phase 5 scaffold is skipped; Phase 6 build respects existing code conventions. Ask for the absolute path to the project root.
+- If "Add to an existing project" → Q2 (tech stack) is skipped and we detect stack from the repo; Phase 5 scaffold is skipped; Phase 6 build respects existing code conventions. **Always ask Q1b next** to clarify the mode — do not default.
+
+---
+
+## Q1b: Existing Project Mode (only if Q1 = "Add to an existing project")
+
+**question:** "I see this project already has code. What do you want me to do with it?"
+**header:** "Existing code"
+**options:**
+- **Add** — Keep all existing code. Add new pages, components, or sections while respecting current conventions. Use this when the existing code is good and you want to extend it. — *Recommended when the current UI is working*
+- **Rebuild** — Keep infrastructure (Next.js/Nuxt config, tsconfig, package.json, API routes, public assets, env files, AGENTS.md / CLAUDE.md) but delete and rewrite every UI component and page from scratch following the survey answers and any spec docs found in the repo. Use this when the current UI is bad and you want a do-over without losing the plumbing.
+- **Replace** — Archive everything outside of `.git/`, `node_modules/`, and `.env*` files into `./archive-{timestamp}/`, then start fresh in the same repo as if it were greenfield. Use this when you want to keep the repo URL and git history but nothing else.
+
+Why this exists: the previous version of Q1 had only "Add to existing project" which implicitly assumed the user wanted to preserve current code. That's wrong when the existing UI is low-quality and the user wants a rebuild — Claude would audit + gap-fill instead of tearing down, and the output stays bad. Surfacing the three modes lets the user say what they actually want in one question.
+
+**adaptive:**
+- All three modes skip Q2 tech stack (detected from the existing repo) and skip Phase 5 scaffold.
+- **Add mode** → Phase 6 build respects existing components and conventions, reuses existing files where possible, never deletes or refactors unrelated code. This is the prior default behavior.
+- **Rebuild mode** → Phase 6 build first enumerates every UI component / page file in the repo, shows the user the list in Plan Mode with a clear "these will be deleted" section, waits for approval, then deletes them and rebuilds from the survey answers + any spec docs found (look for files matching `*SPEC*.md`, `*-SPEC.md`, `AGENTS.md`, `PROJECT.md`, `README.md` with detailed requirements). Infrastructure files (configs, API routes, `public/`, env files) are preserved.
+- **Replace mode** → Phase 5 scaffold runs, but in-place. Before creating new files, moves everything except `.git/`, `node_modules/`, and `.env*` into `./archive-{YYYY-MM-DD-HHMM}/`. Then runs the normal greenfield scaffold. After the build, remind the user the archive exists and they can delete it once they're happy.
+
+**Safety:** Rebuild and Replace modes both delete or move files. Always run inside Plan Mode for these — the plan must list every file that will be deleted, moved, or overwritten. The user approves the plan before any destructive action runs. If the repo is not a git repo or has uncommitted changes, warn the user and recommend a commit before proceeding.
 
 ---
 
