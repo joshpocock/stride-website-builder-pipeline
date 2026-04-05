@@ -1,18 +1,31 @@
 ---
 name: stride-website-builder-pipeline
 description: >
-  Build or add a website, landing page, marketing site, product page, or
-  portfolio — works for greenfield projects and for adding pages to an
-  existing codebase. Runs a short adaptive survey (brand, vibe, sections,
-  tech stack), generates hero images and optional scroll animation,
-  builds with taste-skill and peer skills, runs a full SEO pass, and
-  optionally deploys to Vercel/Netlify/Cloudflare. Supports Next.js,
-  Nuxt, Astro, SvelteKit, Remix, Vite+React, and plain HTML. Use on any
-  phrasing like "build a site", "build me a landing page", "i wanna
-  build a site", "make a website", "rebuild [url]", "add a landing page
-  to this repo", "design a site for [brand]", "throw up a site". When
-  activated, start immediately at Phase 0 preflight — do not ask
-  upfront clarifying questions because the survey collects everything.
+  Build, create, make, add, rebuild, scaffold, design, or launch a website,
+  landing page, marketing site, product page, portfolio, or any other
+  web-facing page — for brand new projects OR for existing codebases that
+  already have code. Runs a guided adaptive survey (brand, vibe, sections,
+  tech stack), generates hero images and optional scroll animation, builds
+  with taste-skill and peer skills, runs a full SEO pass, and optionally
+  deploys to Vercel, Netlify, or Cloudflare. Supports Next.js, Nuxt, Astro,
+  SvelteKit, Remix, Vite+React, and plain HTML.
+
+  Make sure to use this skill whenever the user mentions building, creating,
+  making, designing, launching, scaffolding, rebuilding, adding, or putting
+  together anything resembling a website, landing page, site, marketing
+  page, product page, portfolio, or web page — including casual, informal,
+  vague, or typo-filled phrasings like "i wanna build a site", "build me a
+  website", "make a landing page", "throw up a site", "add a landing page
+  to this repo", "design a site for [brand]", "rebuild [url]", "help me
+  launch a site", "put together a landing page", "website for my business",
+  or just "let's build a site" — even if they don't explicitly name the
+  skill or say the word "pipeline". Use this skill EVEN IF the current
+  directory already contains a scaffolded project, package.json, existing
+  components, or prior build output — the skill has an explicit "Add to
+  existing project" path that detects the tech stack and respects existing
+  conventions, so do NOT default to generic "help iterate on this existing
+  codebase" mode when the user's intent is to build, launch, or add a new
+  site or page.
 ---
 
 # Website Builder Pipeline
@@ -60,6 +73,8 @@ Phase 9: LEARNINGS LOG (self-improving)
 ---
 
 ## Phase 0: Preflight Check
+
+**Start Phase 0 immediately on activation.** Do not ask clarifying questions before running preflight — the Phase 1 survey collects every piece of information the skill needs (project type, tech stack, brand source, vibe, sections, deploy target, SEO tier, and more). Asking upfront questions like "what kind of site?" or "what do you want on it?" before loading this SKILL.md duplicates work the skill already does and wastes the user's turns. Load straight into the status audit below.
 
 Before asking any questions, run a preflight audit. Show the user what is ready vs. what needs setup.
 
