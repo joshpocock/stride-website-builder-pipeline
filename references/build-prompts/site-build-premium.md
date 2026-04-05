@@ -18,7 +18,9 @@ invokes Claude Code with `@build-plan.md`.
 - `{{animation_type}}`
 - `{{inspiration_refs}}` (list of URLs or files)
 - `{{deploy_target}}`
-- `{{framework_choice}}` (next/astro/remix/vanilla — inferred from complexity)
+- `{{framework_choice}}` (next/nuxt/astro/sveltekit/remix/vite/vanilla — from Q2, or `existing` if Q1 = add-to-existing-project)
+- `{{project_mode}}` (`new` or `existing`) — controls whether Phase 5 scaffold ran
+- `{{existing_project_path}}` (absolute path, only set when `project_mode = existing`)
 
 ---
 
@@ -112,10 +114,22 @@ Reference these inspiration sources for layout rhythm and structure only
 Any HTML sources in `inspiration/` are for structural scaffolding only. Any
 screenshots are for visual mood reference only.
 
+## Project Mode: {{project_mode}}
+
+**If `{{project_mode}} = new`:** you are working in a fresh scaffolded project at the current working directory. Build freely.
+
+**If `{{project_mode}} = existing`:** you are adding this landing page to an existing codebase at `{{existing_project_path}}`. Rules:
+- Detect the stack by reading the project root (`package.json`, `next.config.*`, `nuxt.config.*`, `astro.config.*`, `svelte.config.*`, `remix.config.*`, `vite.config.*`, or plain `index.html`). Use what's there — do NOT try to migrate it.
+- Match the project's existing conventions: component folder layout, CSS approach (Tailwind / CSS modules / styled-components / plain CSS), import aliases, TypeScript or JavaScript, routing pattern.
+- Reuse existing components, utilities, and design tokens where they fit. Only create new files when no existing equivalent covers the need.
+- Drop `brand.json` into `public/` or the project's static directory. Drop `assets/` into `public/assets/` or `src/assets/` — match whichever the existing project uses.
+- Never refactor, rename, or delete unrelated files. If you see a code-quality issue outside the landing page's scope, leave it alone.
+- If the landing page needs a new route, create it following the project's existing routing pattern (e.g., `app/landing/page.tsx` for Next App Router, `pages/landing.vue` for Nuxt, `src/routes/landing/+page.svelte` for SvelteKit, `src/pages/landing.astro` for Astro).
+- Before writing any file, check if a similar file already exists and show the user a one-line diff plan.
+
 ## Technical Requirements
 
-- Framework: {{framework_choice}} (use Next.js App Router by default, Astro
-  if marketing-heavy, vanilla HTML if simple single-page)
+- Framework: {{framework_choice}} — Next.js App Router is the default for new projects; Nuxt 3 if Vue is requested; Astro for content-heavy marketing sites; SvelteKit / Remix / Vite+React for niche preferences; plain HTML only for the simplest single-page cases. When `{{project_mode}} = existing`, ignore this and use whatever the existing project uses.
 - Build tool: whatever the framework uses
 - Styling: Tailwind CSS with the theme tokens configured to match the color
   palette and fonts above

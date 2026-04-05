@@ -1,9 +1,6 @@
-# Master Build Prompt — Minimal / Free Tier
+# Master Build Prompt — Minimal Stack
 
-Used when the user picks the Free budget tier. Scaled-down version of
-site-build-premium.md. Assumes the user may not have Kling video, may be
-using Google AI Studio only, and wants a working site without premium
-skill dependencies.
+Used when the user wants a lightweight build: no peer skill dependencies, no Kling / Veo video, minimal framework footprint. Picked automatically when the user has no paid API keys set or explicitly opts out of the premium stack. Scaled-down version of `site-build-premium.md`.
 
 ---
 
@@ -69,12 +66,16 @@ on scroll. Still image fallback on mobile.
 
 Build in order. Staggered reveal on scroll. Semantic HTML5 landmarks.
 
+## Project Mode
+
+**If adding to an existing project:** detect the stack from the project root (Next.js / Nuxt / Astro / SvelteKit / Remix / Vite / plain HTML) and match its conventions. Drop `brand.json` and `assets/` into the project's static directory. Don't migrate or refactor unrelated code.
+
+**If a new project:** default to vanilla HTML + CSS + minimal JS, or Astro if the user picked it in Q2. Avoid heavier frameworks in minimal mode — single `index.html` + `styles.css` + `main.js` is ideal when possible.
+
 ## Technical
 
-- Framework: vanilla HTML + CSS + minimal JS, OR Astro if the user prefers.
-  Avoid Next.js for the free tier (heavier, more deps to manage).
-- Styling: Tailwind CSS via CDN for free-tier simplicity, or hand-written CSS
-- No build step if possible — a single index.html + styles.css + main.js is ideal
+- Styling: Tailwind CSS via CDN for simplicity, or hand-written CSS
+- No build step if possible
 - Images: convert to WebP, lazy-load below the fold
 - Accessibility: WCAG 2.2 AA minimum
 
@@ -100,10 +101,10 @@ Build in order. Staggered reveal on scroll. Semantic HTML5 landmarks.
 
 Same as the premium version — fill in variables, write to build-plan.md, invoke Claude Code.
 
-The difference is the free-tier prompt explicitly avoids:
+The minimal prompt explicitly avoids:
 - Third-party skill dependencies (taste-skill, mager, etc.)
-- Kie.ai/Kling/NanoBanana API calls
-- Heavy frameworks (Next.js, Remix)
+- Kie.ai / Kling / Veo / NanoBanana API calls
+- Heavy frameworks unless the user explicitly picked one in Q2
 - Paid services
 
-The goal: a beautiful landing page anyone can build with zero budget.
+The goal: a beautiful landing page anyone can build with zero budget and no API keys.

@@ -31,6 +31,7 @@ Every question supports "Skip" / "Let AI decide" / "Let me paste manually" as es
 **header:** "Stack"
 **options:**
 - Next.js (React, SSR, best SEO) — *Recommended for most*
+- Nuxt (Vue 3, SSR equivalent to Next)
 - Astro (content-focused, fastest by default)
 - SvelteKit (lightweight, performant)
 - Remix (React, data-driven)

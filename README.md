@@ -106,7 +106,7 @@ build me a landing page for nike.com
 
 ## What you get
 
-- A production-ready site in your choice of tech stack: **Next.js / Astro / SvelteKit / Remix / Vite+React / plain HTML+CSS+JS** — or add the build to an **existing project** you already have (the skill detects your stack and respects your conventions)
+- A production-ready site in your choice of tech stack: **Next.js / Nuxt / Astro / SvelteKit / Remix / Vite+React / plain HTML+CSS+JS** — or add the build to an **existing project** you already have (the skill detects your stack and respects your conventions)
 - Scroll-bound hero animation using 100+ WebP frames extracted from the Kling MP4
 - Full 2026 SEO: JSON-LD schemas, Core Web Vitals in the green, AI Overview citation-ready copy
 - Lighthouse scores: targeting 95+ on Performance, Accessibility, Best Practices, and SEO

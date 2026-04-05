@@ -89,7 +89,7 @@ Use `AskUserQuestion` for each step. Adapt — skip questions when answers from 
 See `references/survey-questions.md` for the full question spec with all options, adaptive rules, and escape hatches. Summary:
 
 1. **Project type** — Landing / Multi-page / Full app / Portfolio / **Add to existing project**
-2. **Tech stack** — Next.js / Astro / SvelteKit / Remix / Vite+React / Plain HTML / AI decides. *Skipped if Q1 = "Add to existing project"; stack is auto-detected from the repo.*
+2. **Tech stack** — Next.js / Nuxt / Astro / SvelteKit / Remix / Vite+React / Plain HTML / AI decides. *Skipped if Q1 = "Add to existing project"; stack is auto-detected from the repo.*
 3. **Brand source** — URL (Firecrawl) / Manual / Screenshots / Build from scratch / Let AI decide
 4. **Business info** — Company name, tagline, one-sentence description (pre-filled from Firecrawl if available)
 5. **Target audience** — Free text
@@ -284,6 +284,19 @@ Pre-populate `.env` with:
 - User's existing keys (from environment or prior runs)
 - Placeholders for missing keys
 - Comments explaining which keys are required vs optional
+
+### Install script fallback
+
+Scaffolders (`create-next-app`, `nuxi init`, `npm create astro`, `npm create svelte`, `npm create vite`, `create-remix`) sometimes prompt interactively or hang waiting for input when Claude Code runs them. **Always pass non-interactive flags** so the scaffold runs clean:
+
+- Next.js: `npx create-next-app@latest {name} --ts --tailwind --app --src-dir --import-alias "@/*" --no-eslint --use-npm --yes`
+- Nuxt: `npx nuxi@latest init {name} --packageManager npm --gitInit false --force`
+- Astro: `npm create astro@latest {name} -- --template minimal --typescript strict --install --no-git --yes`
+- SvelteKit: `npm create svelte@latest {name} -- --template skeleton --types ts --no-prettier --no-eslint --no-playwright --no-vitest`
+- Vite: `npm create vite@latest {name} -- --template react-ts`
+- Remix: `npx create-remix@latest {name} --template remix-run/remix/templates/remix --install --no-git-init --yes`
+
+**If the scaffolder still fails** (network error, prompt can't be bypassed, version mismatch), do NOT keep retrying. Stop and print the exact command for the user to run manually in their own terminal, then wait for them to confirm it finished before continuing to Phase 6. Tell them: "I couldn't run `<command>` non-interactively. Please run it yourself and reply 'done' when the folder is created." This keeps the skill unblocked without making the user debug a subprocess failure.
 
 ---
 
