@@ -1,6 +1,30 @@
 #!/usr/bin/env python3
 """
-Kie.ai API wrapper for NanoBanana 2 + Kling 3.0 + Veo 3 / Veo 3.1.
+Kie.ai API wrapper — PARTIALLY BROKEN as of 2026-04 production run.
+
+⚠️  STATUS: The Kie.ai API surface changed and the video-generation path
+    in this script is stale. Image generation may still work with the
+    corrected BASE_URL below, but has not been re-verified after the
+    2026 Kie API rewrite.
+
+    VERIFIED WORKING:
+    - Credit check endpoint: https://api.kie.ai/api/v1/chat/credit
+    - Key auth: Bearer token in Authorization header
+
+    BROKEN OR UNVERIFIED:
+    - /images/generations path (not tested against new API)
+    - /videos/generations path (confirmed dead — returns 404)
+    - /tasks/{id} polling path (confirmed dead — returns 404)
+    - kling3, veo3-*, veo3.1-* model ID strings (none matched in probes)
+    - Kie's current pattern is /playground/createTask with model in body,
+      not path-based routing — full rewrite needed
+
+    For video generation, use call-wavespeed.py's `video` subcommand —
+    it has verified-working Seedance and Veo 3 Fast paths.
+
+    When this file is rewritten against the current Kie API docs, remove
+    this warning block and the raise NotImplementedError in generate_video.
+
 
 Known-good params (verified from memory):
 - `size` (standard/high) for quality
@@ -59,22 +83,28 @@ from pathlib import Path
 
 
 def _api_key() -> str:
-    """Load Kie.ai API key from env or from kie-ai skill's mcp-config.json."""
+    """Load Kie.ai API key from env, then walk upward for .env files,
+    then fall back to the kie-ai skill's mcp-config.json."""
     key = os.environ.get("KIE_AI_API_KEY")
     if key:
         return key
 
-    # Fallback: read from the kie-ai skill config (per memory)
+    # Walk upward from cwd looking for a .env file with KIE_AI_API_KEY.
+    # Mirrors the logic in call-wavespeed.py for consistency.
+    cwd = Path.cwd()
+    for ancestor in [cwd, *cwd.parents]:
+        env_file = ancestor / ".env"
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith("KIE_AI_API_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+
+    # Final fallback: read from the kie-ai skill config if present
     fallback = (
-        Path.home()
-        / ".claude"
-        / "skills"
-        / "kie-ai"
-        / "mcp-config.json"
+        Path.home() / ".claude" / "skills" / "kie-ai" / "mcp-config.json"
     )
     if not fallback.exists():
-        # Also try project-level skill
-        cwd = Path.cwd()
         for ancestor in [cwd, *cwd.parents]:
             candidate = ancestor / ".claude" / "skills" / "kie-ai" / "mcp-config.json"
             if candidate.exists():
@@ -83,7 +113,6 @@ def _api_key() -> str:
 
     if fallback.exists():
         data = json.loads(fallback.read_text(encoding="utf-8"))
-        # MCP config typically has { "mcpServers": { "kie-ai": { "env": { "KIE_AI_API_KEY": "..." } } } }
         try:
             return data["mcpServers"]["kie-ai"]["env"]["KIE_AI_API_KEY"]
         except (KeyError, TypeError):
@@ -91,11 +120,14 @@ def _api_key() -> str:
 
     raise RuntimeError(
         "Kie.ai API key not found. Set KIE_AI_API_KEY env var, "
+        "add it to a .env file in the project root, "
         "or ensure .claude/skills/kie-ai/mcp-config.json exists."
     )
 
 
-BASE_URL = "https://api.kie.ai/v1"
+# Verified 2026-04 against https://api.kie.ai/api/v1/chat/credit
+# Previous value was "https://api.kie.ai/v1" which returns 403 Forbidden.
+BASE_URL = "https://api.kie.ai/api/v1"
 
 # Video model registry — caller picks one, passed straight through to Kie.
 # Verify exact model IDs against Kie.ai docs if a call returns a model-not-found error.
@@ -173,7 +205,36 @@ def generate_image(
     return [img if isinstance(img, str) else img.get("url") for img in urls]
 
 
-def generate_video(
+def generate_video(*args, **kwargs) -> str:
+    """BROKEN as of 2026-04. Use call-wavespeed.py video subcommand instead.
+
+    Kie.ai moved off the path-based /videos/generations endpoint and no model
+    ID in VIDEO_MODELS below has been verified against the new API surface.
+    A production run in April 2026 confirmed all Kie video model IDs returned
+    "model not found" or "model format is incorrect" on both the old path and
+    the new /playground/createTask pattern. Until this function is rewritten
+    against the current Kie docs, raise a clear error pointing users at the
+    verified-working alternative.
+    """
+    raise NotImplementedError(
+        "call-kie.py generate_video() is broken — the Kie.ai API surface "
+        "changed and this function has not been rewritten yet.\n"
+        "\n"
+        "Use call-wavespeed.py instead:\n"
+        "  python scripts/call-wavespeed.py video \\\n"
+        "    --model seedance-pro \\\n"
+        "    --start <start_url> \\\n"
+        "    --end <end_url> \\\n"
+        "    --prompt '...' \\\n"
+        "    --duration 5 --aspect 16:9\n"
+        "\n"
+        "Verified working paths on Wavespeed:\n"
+        "  - bytedance/seedance-v1-pro-i2v-480p (supports start+end frame)\n"
+        "  - google/veo3-fast/image-to-video (duration must be 4, 6, or 8)\n"
+    )
+
+
+def _generate_video_stale(
     start_image_url: str,
     prompt: str,
     end_image_url: str | None = None,
@@ -182,11 +243,12 @@ def generate_video(
     size: str = "high",
     model: str = "kling3",
 ) -> str:
-    """Generate a video (Kling 3.0 or Veo 3/3.1) from a start frame.
+    """STALE — kept for reference only when rewriting against current Kie API.
 
-    Kling supports an end_image_url for image-to-image interpolation (best
-    for scroll-bound hero transitions). Veo models take a single start frame
-    plus prompt and generate from there — pass end_image_url=None for Veo.
+    The old implementation assumed /videos/generations + task-id polling at
+    /tasks/{id}. Both returned 404 in the 2026-04 production test. Do not
+    call this — it will fail. Marked with underscore prefix to prevent
+    accidental use.
     """
     n_frames = 10 if duration_seconds <= 5 else 15
     model_info = VIDEO_MODELS.get(model, {})
@@ -231,7 +293,10 @@ def _cli() -> None:
     img.add_argument("--n", type=int, default=4)
     img.add_argument("--out", default=".")
 
-    vid = sub.add_parser("video", help="Generate video via Kling 3.0 / Veo 3 / Veo 3.1")
+    vid = sub.add_parser(
+        "video",
+        help="BROKEN — use call-wavespeed.py video instead. Kept only to surface a clear error."
+    )
     vid.add_argument("--start", required=True, help="start image URL")
     vid.add_argument("--end", default=None, help="end image URL (Kling only; ignored for Veo)")
     vid.add_argument("--prompt", required=True)
