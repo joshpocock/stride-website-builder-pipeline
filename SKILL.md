@@ -74,7 +74,7 @@ Present results as a color-coded table:
 - ⚠ Needs key (yellow)
 - ✗ Not installed (red)
 
-Offer "install all recommended" or let user cherry-pick. NEVER install automatically — always ask first.
+Offer "install all recommended" or let the user cherry-pick. Always ask before installing anything — auto-installing skills or tools on someone's machine without consent is a trust violation that's hard to recover from, and a one-sentence confirmation is cheap.
 
 If this is a repeat run, pre-fill the survey with the user's last answers from history.
 
@@ -170,13 +170,13 @@ Based on Q13 integrations + vibe archetype, determine which peer skills to insta
    - `UIUX Pro Max` (nextlevelbuilder) → industry-specific UX refinement (medical, legal, fintech)
 3. **Image generation tool slot** — `cc-nano-banana` if `GEMINI_API_KEY` is set, otherwise skip (pipeline still works; image gen happens via `call-kie.py` or `call-wavespeed.py`).
 
-**NEVER stack multiple aesthetic-opinion skills.** Installing mager + front-end design + UIUX Pro Max at the same time gives Claude contradictory signals about type hierarchy, grid style, and motion intensity, and the build quality drops. The "10 skills not just taste" video narrative is about having the MENU to swap between projects, not about installing all of them at once.
+**Don't stack multiple aesthetic-opinion skills.** Installing mager + front-end design + UIUX Pro Max together gives Claude contradictory signals about type hierarchy, grid style, and motion intensity, and the output gets muddy — each skill has strong opinions and they fight each other. The "10 skills not just taste" video narrative is about having the menu to swap between projects, not about stacking them in one build. Pick one aesthetic skill per project based on the vibe archetype.
 
 **Always install (utility, non-opinion):**
 - `agent-browser` (Vercel Labs) — critical for Phase 6.5 verification loop
 
 **Optional opt-in (user must explicitly confirm):**
-- Owl-Listener `designer-skills` bundle — only if the project needs research/strategy/design-ops depth beyond taste-skill; NEVER co-install with another aesthetic-opinion skill
+- Owl-Listener `designer-skills` bundle — only if the project needs research/strategy/design-ops depth beyond taste-skill; don't co-install with another aesthetic-opinion skill (same contradictory-signals problem as above)
 - `TypeUI.sh` themes — design-file downloads, not a skill in the traditional sense
 - `AccessLint` — WCAG compliance, safe to co-install (utility, not opinion), required if SEO tier is "Full Audit"
 - `paper-design-mcp` — only if user is actively designing in Paper
@@ -188,7 +188,7 @@ Based on Q13 integrations + vibe archetype, determine which peer skills to insta
 2. For each skill in the three slots above, if missing, show the exact install command to the user
 3. Ask the user to confirm each install individually
 4. Run the confirmed installs one at a time, verify each succeeded before moving on
-5. NEVER silently auto-execute installs. NEVER batch-install without per-skill confirmation.
+5. Run installs one at a time with a confirmation before each. Batching them loses the ability to catch a wrong install and reason about it before the next one runs, and silent auto-execution is the same trust problem as in Phase 0.
 
 ---
 
@@ -333,7 +333,7 @@ The filled prompt invokes Claude Code with:
 - Paper graphic exports (`./assets/graphics/`) if Phase 4c ran
 - Plan Mode first (Nate Herk strategy)
 
-**Critical: Use the Plan Mode → Bypass Permissions workflow.** The skill should instruct Claude Code to enter Plan Mode, show the plan, wait for user approval, then execute.
+**Use the Plan Mode → Bypass Permissions workflow** for the build. Plan Mode surfaces Claude's plan so the user can catch wrong assumptions before any files get written, and switching to Bypass Permissions only after approval means the actual build doesn't get interrupted by per-tool confirmations (which would pull the user out of the flow every few seconds during a 10-20 minute build). The checkpoint is upfront, the execution is smooth.
 
 ### Mid-build: 21st.dev Magic MCP component injection (optional)
 
