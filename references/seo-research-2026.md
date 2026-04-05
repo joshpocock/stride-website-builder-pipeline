@@ -8,7 +8,7 @@ stack: Next.js 15 App Router, React, Vercel/Netlify
 
 # SEO Research 2026 — Reference for the Website Builder Pipeline Skill
 
-This document is the canonical reference loaded by the `website-builder-pipeline` skill. Every landing page Claude Code ships for a local service business (dental, restaurant, barber, real estate, fitness) MUST satisfy the Automated Audit Checklist at the bottom of this file. Nothing here is generic — every item is directly actionable in code.
+This document is the canonical SEO reference loaded by the `stride-website-builder-pipeline` skill during Phase 7. Every landing page the skill ships for a local service business (dental, restaurant, barber, real estate, fitness) should satisfy the Automated Audit Checklist at the bottom of this file — that checklist is the minimum bar for local-SEO quality, and skipping items there tends to show up as lost AI Overview citations and weaker local pack rankings. Nothing here is generic — every item is directly actionable in code.
 
 ## Table of Contents
 
