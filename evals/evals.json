@@ -1,0 +1,71 @@
+{
+  "skill_name": "stride-website-builder-pipeline",
+  "notes": "Test prompts for verifying the skill triggers correctly and executes end-to-end. Follows skill-creator's eval schema (see skill-creator references/schemas.md). Assertions intentionally empty for first pass — add after running initial eval to see what the skill actually produces.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "casual-phrasing-greenfield",
+      "prompt": "i wanna build a site",
+      "expected_output": "Skill triggers immediately. Phase 0 preflight runs (status table of env vars, CLIs, skills, MCPs). Then Phase 1 Q1 asks project type.",
+      "should_trigger": true,
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "brand-url-ad-context",
+      "prompt": "build me a landing page for nike.com, running facebook ads to it so i need FB pixel + a single-field lead form at the top",
+      "expected_output": "Skill triggers. Phase 0 runs. Q1 Landing page, Q2 stack, Q3 brand source with Nike URL as candidate for Firecrawl path, Q11 sections smart-preselected to include hero + lead form + CTA. Plan summary mentions FB Pixel will be added during Phase 7.",
+      "should_trigger": true,
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "existing-project-add-landing",
+      "prompt": "add a landing page to this repo",
+      "expected_output": "Skill triggers even though the current directory has a scaffolded Next.js project. Phase 0 detects existing code. Q1 auto-suggests 'Add to existing project' path, Q2 skipped (stack detected from repo), Phase 5 scaffold skipped, Phase 6 respects existing conventions.",
+      "should_trigger": true,
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "name": "rebuild-competitor",
+      "prompt": "rebuild https://stripe.com as a landing page for my fintech startup",
+      "expected_output": "Skill triggers. Q3 brand source pulls structure via Firecrawl + view-page-source.com, Q6 vibe auto-suggested based on Stripe aesthetic, Q4b inspiration populated from the URL, build respects the reference structure.",
+      "should_trigger": true,
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 5,
+      "name": "near-miss-fix-hero",
+      "prompt": "help me fix the hero section on my landing page — the CTA button isn't aligning right on mobile",
+      "expected_output": "Skill should NOT trigger. This is iteration on existing code, not building a new site. Claude should read the hero component and fix the alignment issue directly using normal tools.",
+      "should_trigger": false,
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 6,
+      "name": "near-miss-deploy-only",
+      "prompt": "deploy this to vercel",
+      "expected_output": "Skill should NOT trigger. The user wants only a deploy action, not a build. Claude should run vercel deploy directly without invoking the survey or asset pipeline.",
+      "should_trigger": false,
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 7,
+      "name": "near-miss-design-question",
+      "prompt": "what's the best hero font pairing for a legal services website?",
+      "expected_output": "Skill should NOT trigger. This is a design question with a short factual answer, not a build request. Claude should recommend 2-3 font pairs with reasoning — maybe reference the vibe-archetypes.md content if helpful, but not launch the full pipeline.",
+      "should_trigger": false,
+      "files": [],
+      "assertions": []
+    }
+  ],
+  "trigger_eval_notes": "Evals 1-4 should trigger the skill (true positives). Evals 5-7 should not (true negatives — near-misses that share keywords with the skill but need a different response). A good skill description achieves high rates on both axes. If eval 3 fails to trigger, the existing-project override in the description isn't strong enough. If eval 5 triggers, the description is too greedy and needs tighter boundaries.",
+  "full_pipeline_eval_notes": "Evals 1-4 can additionally be used as full end-to-end runs once we add assertions. Key assertions to add later: (a) brand.json is written after Phase 2, (b) assets/hero.mp4 exists after Phase 4 if Q10a != static, (c) Lighthouse scores hit targets after Phase 7, (d) dev server starts successfully at end of Phase 6, (e) for eval 3, the skill never writes outside the existing project's conventions."
+}
