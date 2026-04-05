@@ -1,4 +1,4 @@
-# website-builder-pipeline
+# stride-website-builder-pipeline
 
 **A Claude Code skill that takes you from a brand URL to a deployed, premium, animated website in under 30 minutes for $2 to $10 in total cost.**
 
@@ -26,7 +26,7 @@ One skill. One command. The entire 2026 AI website stack chained into a single g
 ## Install
 
 ```bash
-npx skills add https://github.com/<OWNER>/website-builder-pipeline
+npx skills add https://github.com/joshpocock/stride-website-builder-pipeline
 ```
 
 Then in Claude Code:
@@ -82,7 +82,7 @@ The pipeline never stacks multiple aesthetic-opinion skills at once. Stacking ma
 
 ```bash
 # 1. Install the skill
-npx skills add https://github.com/<OWNER>/website-builder-pipeline
+npx skills add https://github.com/joshpocock/stride-website-builder-pipeline
 
 # 2. Set your env vars (at minimum: Firecrawl + one image provider)
 export FIRECRAWL_API_KEY=fc-...
@@ -147,7 +147,7 @@ Open source. MIT licensed. Run it, break it, send PRs.
 ## Structure
 
 ```
-website-builder-pipeline/
+stride-website-builder-pipeline/
 ├── SKILL.md                        # Main skill instructions for Claude
 ├── README.md                       # This file
 ├── references/
