@@ -1,17 +1,27 @@
 ---
 name: stride-website-builder-pipeline
 description: >
-  End-to-end premium website builder. Guided survey chains Firecrawl brand
-  extraction, NanoBanana 2 image generation, Kling 3.0 video animation,
-  Claude Code build with multiple skills, full SEO optimization, and one-click
-  deploy to Vercel/Netlify. Use when the user wants to: (1) build a landing
-  page or multi-page website with AI, (2) create a premium $10K-style animated
-  site, (3) go from brand URL to deployed website in under 30 minutes,
-  (4) rebuild a competitor or client site with modern design.
-  Triggers on: "build me a website", "build a landing page", "create a site
-  for [brand]", "$10K website", "premium landing page", "ai website pipeline",
-  "website builder", "vibe code a website", "rebuild [url]", "landing page
-  for [company]", "build a scroll animated site".
+  Build a website or landing page — new projects OR adding a page to an existing
+  codebase. Works for any tech stack (Next.js, Nuxt, Astro, SvelteKit, Remix,
+  Vite, plain HTML) and any project type (landing page, multi-page site,
+  portfolio, full app). Runs a short adaptive survey, extracts or picks a
+  brand, generates hero images and optional scroll animation, builds the
+  site with taste-skill + peer skills, runs a full SEO pass, and optionally
+  deploys to Vercel/Netlify/Cloudflare. All phases have "let AI decide"
+  escape hatches — user can go fast or stay in control.
+  USE THIS SKILL WHENEVER the user asks to build, create, make, rebuild,
+  scaffold, design, or add a website, landing page, marketing site, product
+  page, portfolio, or similar — even if the phrasing is informal ("build me
+  a site", "i wanna build a site", "make a landing page", "add a landing
+  page to this repo", "design a site for [X]", "rebuild [url]", "help me
+  build a website", "launch a site for [brand]", "put together a landing
+  page", "throw up a site", "website for my business"). USE THIS SKILL EVEN
+  IF THE PROJECT ALREADY EXISTS — Q1 has an "add to existing project" path
+  that detects the stack and respects conventions. Do NOT default to
+  generic "help with this existing project" mode when the user says
+  anything about building, creating, or launching a website or landing
+  page — activate this skill instead and let Phase 0 preflight handle the
+  new-vs-existing decision.
 ---
 
 # Website Builder Pipeline
