@@ -82,39 +82,38 @@ If this is a repeat run, pre-fill the survey with the user's last answers from h
 
 ---
 
-## Phase 1: The Survey (15 Adaptive Questions)
+## Phase 1: The Survey (13 Adaptive Questions)
 
-Use `AskUserQuestion` for each step. Adapt — skip questions when answers from earlier questions make them unnecessary.
+Use `AskUserQuestion` for each step. Adapt — skip questions when answers from earlier questions make them unnecessary. Typical user answers 8–10 questions after adaptive skips.
 
-See `references/survey-questions.md` for the full question spec, adaptive rules, and answer options.
+See `references/survey-questions.md` for the full question spec with all options, adaptive rules, and escape hatches. Summary:
 
-**Core questions:**
+1. **Project type** — Landing / Multi-page / Full app / Portfolio / **Add to existing project**
+2. **Tech stack** — Next.js / Astro / SvelteKit / Remix / Vite+React / Plain HTML / AI decides. *Skipped if Q1 = "Add to existing project"; stack is auto-detected from the repo.*
+3. **Brand source** — URL (Firecrawl) / Manual / Screenshots / Build from scratch / Let AI decide
+4. **Business info** — Company name, tagline, one-sentence description (pre-filled from Firecrawl if available)
+5. **Target audience** — Free text
+6. **Vibe archetype** — 6 presets + Custom + Let AI decide
+7. **Color palette** — *Skipped if Q3 already provided colors*
+8. **Font pairing** — *Skipped if Q3 already provided fonts*
+9. **Hero images** — three sub-axes: **source** (AI generates / upload as-is / upload + AI edits / AI decides), **prompt** (AI writes from 6-stage Cinematic Frame Method / user writes / AI decides), **model** (auto-picked from env: Wavespeed Gemini 3 Pro → Kie Nano Banana Pro)
+10. **Hero animation** — three sub-axes: **style** (exploded / orbit / dolly / pan / static / own MP4 / AI decides), **model** (Kling 3.0 / Veo 3.1 Fast / Veo 3.1 / Veo 3 Fast / Veo 3 / AI picks), **prompt** (AI writes / user writes / AI decides). *Q10b + Q10c skipped if style = static or own MP4*
+11. **Sections** — multi-select with smart pre-selection from Q1 + Q6, plus a free-text "+ add your own" field for custom sections
+12. **Deploy target** — Vercel / Netlify / Cloudflare / Manual / Skip
+13. **SEO tier** — Full audit / Basic / Skip. **Never forced** — user's answer always wins, even for local service businesses (we only recommend).
 
-1. **Project type** — Landing page / Multi-page / Full app / Portfolio
-2. **Brand source** — Existing URL (→ Firecrawl) / Upload logo+colors / Build from scratch / Screenshots
-3. **Business info** — Company name, tagline, one-sentence description
-4. **Target audience** — Who is this for?
-5. **Vibe archetype** — 6 presets with ASCII previews (see `references/vibe-archetypes.md`)
-6. **Color palette** — Use extracted brand / Pick preset / Custom hex
-7. **Font pairing** — Geist+Satoshi / Cabinet Grotesk+Inter / Custom
-8. **Hero animation** — Exploded view / Cinematic orbit / Dolly / Pan / None / Upload MP4
-9. **Product images** — AI-generate / Upload existing / Mix
-10. **Sections needed** — Hero / Features / Pricing / Testimonials / Team / FAQ / CTA (multi)
-11. **Deploy target** — Vercel / Netlify / Cloudflare / Manual / Skip
-12. **Budget tier** — Free / Budget ($5, Kie.ai) / Pro ($20, Higgsfield+skills)
-13. **Integrations** — Firecrawl / Kie.ai / GitHub / Vercel / 21st.dev / Stitch MCP (multi)
-14. **Inspiration** — Paste URLs or drop screenshots
-15. **SEO tier** — Skip / Basic / Full Audit
-
-After Q15, present the generated plan and wait for explicit confirmation before any execution.
+After Q13, present the generated plan and wait for explicit confirmation before any execution.
 
 **Adaptive rules (examples):**
-- If Q2 = "Build from scratch" → skip Q6 brand extraction questions
-- If Q12 = "Free" → force Q13 to Google AI Studio, skip Kie.ai
-- If Q8 = "None" → skip Q9 product images
-- If user provides a Figma file → skip Q6, Q7 entirely
+- If Q1 = "Add to existing project" → skip Q2 tech stack, detect from repo; skip Phase 5 scaffold; Phase 6 build respects existing code conventions
+- If Q3 = "Build from scratch" or "Let AI decide" → skip Q7 + Q8
+- If Q10a = "Static" or "Own MP4" → skip Q10b + Q10c
+- If Q9a = "Upload as-is" → skip Q9b prompt source
+- If user provides a Figma file → skip Q7, Q8 entirely
 
-**Escape hatches:** every question supports "skip this / paste manually / let me show you".
+**Removed from prior spec:** old Q12 budget tier (overlapped with provider-key detection), old Q13 integrations list (now auto-detected from env vars in Phase 0), old Q14 separate inspiration question (merged with Q4b above Q5).
+
+**Escape hatches:** every question supports "skip this / paste manually / let me show you / let AI decide".
 
 ---
 
@@ -228,27 +227,42 @@ This writes `locked-start.webp` and `locked-end.webp` into the project assets fo
 
 **Skip this step if Kie.ai was used in 4a** — Kie.ai Nano Banana already includes internal coherence between variants in the same batch, so the locked-pair pass is redundant.
 
-### 4b. Kling 3.0 Video Animation
+### 4b. Video Animation (Kling 3.0 / Veo 3 / Veo 3.1)
 
-Generate the Kling transition prompt from `references/build-prompts/video-gen-kling.md` using the picked start+end frames.
+Pick the video model from Q10b. Kie.ai hosts all supported video models via `references/call-kie.py` (see its `VIDEO_MODELS` registry). Quick reference:
 
-Call `references/call-kie.py` with:
-- Model: `kling3`
-- Start image: picked start frame URL
-- End image: picked end frame URL
-- Duration: 5s
-- Quality: 1080p
-- Enhance: off
+| Model (Q10b) | `--model` flag | Takes end frame? | Cost tier | Best for |
+|---|---|---|---|---|
+| Kling 3.0 | `kling3` | ✅ Yes | cheap | Scroll-bound hero with locked start/end (default) |
+| Veo 3.1 Fast | `veo3.1-fast` | ❌ No | mid | Freeform hero motion, fast turnaround |
+| Veo 3.1 | `veo3.1` | ❌ No | high | Premium freeform hero, slower render |
+| Veo 3 Fast | `veo3-fast` | ❌ No | mid | Older Veo, mid quality |
+| Veo 3 | `veo3` | ❌ No | high | Older Veo, high quality |
+
+**Prompt generation (Q10c):**
+- If user chose "AI writes" → fill `references/build-prompts/video-gen-kling.md` with survey answers
+- If user chose "I'll write my own" → ask them for the prompt directly via `AskUserQuestion`
+- If user chose "Let AI decide" → same as AI writes, but also auto-pick Q10b based on Q10a (exploded/orbit → Kling since those need locked start+end; dolly/pan → Veo 3.1 Fast)
+
+**Call `call-kie.py video`:**
+- `--start` → picked start frame URL (always)
+- `--end` → picked end frame URL (only if model is Kling; ignored for Veo)
+- `--prompt` → from the prompt step above
+- `--duration` → 5
+- `--aspect` → `16:9`
+- `--model` → from Q10b
 
 Download the MP4 to `project/assets/hero.mp4`. Run ffmpeg to extract a mobile still: `hero-mobile.jpg`.
 
-Cost budget: ~$3-5 per full run. Alert user if they hit $10.
+**Cost budget:** Kling ~$0.50, Veo Fast ~$1.50, Veo full ~$4 per 5s clip. Full run budget: $2-10. Alert user if they hit $10.
 
 ---
 
 ## Phase 5: Project Scaffold
 
-Run `references/scaffold-project.py` to create:
+**Skip this entire phase if Q1 = "Add to existing project".** Instead: `cd` to the user-provided project root, detect the existing tech stack (look for `package.json`, `astro.config.*`, `svelte.config.*`, `next.config.*`, `remix.config.*`, `vite.config.*`, plain `index.html`), read existing conventions (component folder structure, CSS approach, routing pattern), and drop `brand.json` + `assets/` into a sensible location inside the existing repo (typically `public/brand.json` and `public/assets/` or `src/assets/`). Do NOT overwrite existing files without explicit confirmation.
+
+For new projects, run `references/scaffold-project.py` to create:
 
 ```
 project-name/
@@ -275,7 +289,9 @@ Pre-populate `.env` with:
 
 ## Phase 6: Build
 
-Read `references/build-prompts/site-build-premium.md` (or `site-build-minimal.md` if budget tier is Free) and fill in template variables from the survey:
+**If Q1 = "Add to existing project":** use `site-build-premium.md` as a guide but adapt to the existing codebase — match the detected stack's patterns, reuse existing components where possible, and stay inside the user's folder conventions. Never refactor unrelated code.
+
+Otherwise, read `references/build-prompts/site-build-premium.md` (for premium tier) or `site-build-minimal.md` (for simpler runs) and fill in template variables from the survey:
 - `{{brand_name}}`, `{{tagline}}`, `{{colors}}`, `{{fonts}}`
 - `{{vibe}}`, `{{motion_intensity}}`, `{{design_variance}}`, `{{visual_density}}`
 - `{{sections}}`, `{{animation_type}}`

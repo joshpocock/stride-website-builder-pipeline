@@ -9,10 +9,10 @@ One skill. One command. The entire 2026 AI website stack chained into a single g
 ## What it does
 
 - **Phase 0 — Preflight.** Checks your env vars, installed peer skills, and required tools before touching anything.
-- **Phase 1 — Survey.** 15 adaptive questions (screenshot-friendly, so you can paste mockups instead of describing them).
+- **Phase 1 — Survey.** 13 adaptive questions (~8–10 after skips, screenshot-friendly so you can paste mockups instead of describing them). Covers project type, tech stack, brand source, vibe, hero images, hero animation, sections, deploy target, and SEO tier. Every question has a "Let AI decide" escape hatch.
 - **Phase 2 — Brand extraction.** Pulls colors, fonts, logo, spacing, and personality from any URL via Firecrawl and saves it as `brand.json`.
 - **Phase 3 — Guided peer skill installation.** Walks you through installing exactly the right three skills for your project — one rules skill (`taste-skill`, always), one aesthetic opinion skill (picked from the menu based on your vibe), and one image tool (`cc-nano-banana` if you have a Gemini key). Shows the install commands, asks you to confirm each one, never silently runs code on your machine. The "10 skills" in the video is the menu you pick from, not a stack you install all at once.
-- **Phase 4 — Asset generation.** Generates start and end hero frames via Gemini 3 Pro Image (Wavespeed AI, 4K native, $0.025/img) or Nano Banana Pro (Kie.ai, 2K, as fallback — the skill picks automatically based on which API key you have set). Then animates the scroll transition via Kling 3.0 on Kie.ai. When Wavespeed is in play, also runs a lock-pair matching pass through Nano Banana Pro Edit Multi so start and end frames share identical light, color, and camera before Kling interpolates them.
+- **Phase 4 — Asset generation.** Generates hero images via Gemini 3 Pro Image (Wavespeed, 4K native, $0.025/img) or Nano Banana Pro (Kie.ai, 2K, fallback — auto-picked from env keys). You can also upload your own images and have Nano Banana edit them to match brand. Then animates via your pick of **Kling 3.0** (image-to-image, cheapest, locked start+end frames) or **Veo 3 / Veo 3.1 / Veo 3 Fast / Veo 3.1 Fast** (freeform motion from a single start frame) — all via Kie.ai. When Wavespeed is in play, runs a lock-pair matching pass through Nano Banana Pro Edit Multi so start and end frames share identical light, color, and camera before Kling interpolates them.
 - **Phase 5 — Scaffold.** Creates a clean project folder with the brand file, hero MP4, mobile still, and a locked prompt set.
 - **Phase 6 — Build.** Claude Code builds the site in Plan Mode, then executes in Bypass Permissions mode for clean first-try quality.
 - **Phase 6.5 — Verify.** Hands off to `agent-browser` (Vercel Labs) for automated desktop and mobile screenshots, accessibility tree checks, Lighthouse scoring, and a self-correcting fix loop.
@@ -106,7 +106,7 @@ build me a landing page for nike.com
 
 ## What you get
 
-- A production-ready Next.js or Astro site (your choice during survey)
+- A production-ready site in your choice of tech stack: **Next.js / Astro / SvelteKit / Remix / Vite+React / plain HTML+CSS+JS** — or add the build to an **existing project** you already have (the skill detects your stack and respects your conventions)
 - Scroll-bound hero animation using 100+ WebP frames extracted from the Kling MP4
 - Full 2026 SEO: JSON-LD schemas, Core Web Vitals in the green, AI Overview citation-ready copy
 - Lighthouse scores: targeting 95+ on Performance, Accessibility, Best Practices, and SEO

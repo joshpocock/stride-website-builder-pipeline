@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Kie.ai API wrapper for NanoBanana 2 + Kling 3.0.
+Kie.ai API wrapper for NanoBanana 2 + Kling 3.0 + Veo 3 / Veo 3.1.
 
 Known-good params (verified from memory):
 - `size` (standard/high) for quality
@@ -9,6 +9,17 @@ Known-good params (verified from memory):
 - Do NOT use `quality` param — API rejects it with "size is invalid"
 - High quality 15s portrait video renders take ~12-15 min
 - Result URLs are temporary (tempfile.aiquickdraw.com) — download immediately
+
+Supported video models (pass to generate_video via `model=`):
+- `kling3`        — Kling 3.0 (default, fastest, cheapest, image-to-image)
+- `veo3-fast`     — Veo 3 Fast (mid-tier quality, faster renders)
+- `veo3`          — Veo 3 (high quality, slower)
+- `veo3.1-fast`   — Veo 3.1 Fast (newest, balanced)
+- `veo3.1`        — Veo 3.1 (newest, highest quality)
+NOTE: Exact Kie.ai model identifiers should be cross-referenced against current
+Kie docs — the names above follow Kie's public naming pattern but may need
+tweaking as Kie renames endpoints. The API passes `model` through as a string
+so overriding from the caller is always safe.
 
 Usage:
     from call_kie import generate_image, generate_video
@@ -86,6 +97,16 @@ def _api_key() -> str:
 
 BASE_URL = "https://api.kie.ai/v1"
 
+# Video model registry — caller picks one, passed straight through to Kie.
+# Verify exact model IDs against Kie.ai docs if a call returns a model-not-found error.
+VIDEO_MODELS = {
+    "kling3": {"label": "Kling 3.0", "supports_end_frame": True, "cost_tier": "cheap"},
+    "veo3-fast": {"label": "Veo 3 Fast", "supports_end_frame": False, "cost_tier": "mid"},
+    "veo3": {"label": "Veo 3", "supports_end_frame": False, "cost_tier": "high"},
+    "veo3.1-fast": {"label": "Veo 3.1 Fast", "supports_end_frame": False, "cost_tier": "mid"},
+    "veo3.1": {"label": "Veo 3.1", "supports_end_frame": False, "cost_tier": "high"},
+}
+
 
 def _post(path: str, body: dict) -> dict:
     req = urllib.request.Request(
@@ -154,28 +175,36 @@ def generate_image(
 
 def generate_video(
     start_image_url: str,
-    end_image_url: str,
     prompt: str,
+    end_image_url: str | None = None,
     duration_seconds: int = 5,
     aspect_ratio: str = "16:9",
     size: str = "high",
     model: str = "kling3",
 ) -> str:
-    """Generate a Kling 3.0 video from start+end frames. Returns the video URL."""
-    # n_frames is REQUIRED per memory — use 10 for 5s @ 2fps or 15 for longer
+    """Generate a video (Kling 3.0 or Veo 3/3.1) from a start frame.
+
+    Kling supports an end_image_url for image-to-image interpolation (best
+    for scroll-bound hero transitions). Veo models take a single start frame
+    plus prompt and generate from there — pass end_image_url=None for Veo.
+    """
     n_frames = 10 if duration_seconds <= 5 else 15
+    model_info = VIDEO_MODELS.get(model, {})
+    supports_end = model_info.get("supports_end_frame", False)
 
     body = {
         "model": model,
         "prompt": prompt,
         "start_image": start_image_url,
-        "end_image": end_image_url,
         "aspect_ratio": aspect_ratio,
         "size": size,
         "n_frames": n_frames,
         "duration": duration_seconds,
-        "enhance": False,  # Memory note: keep off for control
+        "enhance": False,
     }
+    if supports_end and end_image_url:
+        body["end_image"] = end_image_url
+
     result = _post("/videos/generations", body)
     task_id = result.get("task_id") or result.get("id")
     if task_id:
@@ -202,12 +231,13 @@ def _cli() -> None:
     img.add_argument("--n", type=int, default=4)
     img.add_argument("--out", default=".")
 
-    vid = sub.add_parser("video", help="Generate video via Kling 3.0")
+    vid = sub.add_parser("video", help="Generate video via Kling 3.0 / Veo 3 / Veo 3.1")
     vid.add_argument("--start", required=True, help="start image URL")
-    vid.add_argument("--end", required=True, help="end image URL")
+    vid.add_argument("--end", default=None, help="end image URL (Kling only; ignored for Veo)")
     vid.add_argument("--prompt", required=True)
     vid.add_argument("--duration", type=int, default=5)
     vid.add_argument("--aspect", default="16:9")
+    vid.add_argument("--model", default="kling3", choices=list(VIDEO_MODELS.keys()))
     vid.add_argument("--out", default=".")
 
     args = parser.parse_args()
@@ -231,6 +261,7 @@ def _cli() -> None:
             prompt=args.prompt,
             duration_seconds=args.duration,
             aspect_ratio=args.aspect,
+            model=args.model,
         )
         dest = Path(args.out) / "hero.mp4"
         download(url, dest)
