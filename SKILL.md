@@ -1,27 +1,51 @@
 ---
 name: stride-website-builder-pipeline
 description: >
-  Build a website or landing page — new projects OR adding a page to an existing
-  codebase. Works for any tech stack (Next.js, Nuxt, Astro, SvelteKit, Remix,
-  Vite, plain HTML) and any project type (landing page, multi-page site,
-  portfolio, full app). Runs a short adaptive survey, extracts or picks a
-  brand, generates hero images and optional scroll animation, builds the
-  site with taste-skill + peer skills, runs a full SEO pass, and optionally
-  deploys to Vercel/Netlify/Cloudflare. All phases have "let AI decide"
-  escape hatches — user can go fast or stay in control.
-  USE THIS SKILL WHENEVER the user asks to build, create, make, rebuild,
-  scaffold, design, or add a website, landing page, marketing site, product
-  page, portfolio, or similar — even if the phrasing is informal ("build me
-  a site", "i wanna build a site", "make a landing page", "add a landing
-  page to this repo", "design a site for [X]", "rebuild [url]", "help me
-  build a website", "launch a site for [brand]", "put together a landing
-  page", "throw up a site", "website for my business"). USE THIS SKILL EVEN
-  IF THE PROJECT ALREADY EXISTS — Q1 has an "add to existing project" path
-  that detects the stack and respects conventions. Do NOT default to
-  generic "help with this existing project" mode when the user says
-  anything about building, creating, or launching a website or landing
-  page — activate this skill instead and let Phase 0 preflight handle the
-  new-vs-existing decision.
+  Build a website or landing page — new projects OR adding a page to an
+  existing codebase. Works for any tech stack (Next.js, Nuxt, Astro,
+  SvelteKit, Remix, Vite, plain HTML) and any project type (landing page,
+  multi-page site, portfolio, full app). Runs a short adaptive survey,
+  extracts or picks a brand, generates hero images and optional scroll
+  animation, builds the site with taste-skill + peer skills, runs a full
+  SEO pass, and optionally deploys.
+
+  ## CRITICAL INVOCATION RULES — READ BEFORE RESPONDING
+
+  1. **IMMEDIATELY LOAD AND EXECUTE THIS SKILL'S SKILL.md** whenever the
+     user says anything about building, creating, making, rebuilding,
+     scaffolding, designing, launching, or adding a website, landing page,
+     marketing site, product page, or portfolio. Matching phrasings
+     include but are not limited to: "build me a website", "build a
+     landing page", "i wanna build a site", "make a landing page",
+     "create a site for [X]", "rebuild [url]", "help me build a website",
+     "throw up a site", "launch a site", "put together a landing page",
+     "add a landing page to this repo", "website for my business",
+     "design a site". Informal / typo-filled phrasing counts.
+
+  2. **DO NOT ASK CLARIFYING QUESTIONS BEFORE INVOKING THIS SKILL.** The
+     skill has its own Phase 0 preflight audit and Phase 1 adaptive
+     survey that collect every piece of information needed. Asking "what
+     kind of site?" or "what do you want on it?" before loading the
+     skill duplicates work the skill already does and wastes the user's
+     turns. Load SKILL.md immediately and begin Phase 0.
+
+  3. **INVOKE EVEN IN EXISTING PROJECTS.** If the current directory
+     already contains a scaffolded project (package.json, existing
+     components, a prior build), DO NOT default to generic "help with
+     this existing project" mode. Q1 of the survey has an explicit
+     "Add to existing project" option that detects the tech stack and
+     respects existing conventions. Load the skill and let Phase 1
+     handle the new-vs-existing decision.
+
+  4. **DO NOT ASK THE USER FOR PERMISSION TO RUN THE SKILL.** If the
+     trigger phrase matched, the user already gave permission by
+     asking. Load SKILL.md and start Phase 0 in the same response —
+     do not say "want me to call it?" or "should I run the skill?".
+     Just run it.
+
+  The skill itself has per-phase checkpoints, plan-mode approval
+  gates, and cost guardrails — the user stays in control throughout.
+  Asking permission upfront is not a safety improvement, it is friction.
 ---
 
 # Website Builder Pipeline
