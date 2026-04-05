@@ -149,13 +149,14 @@
             "name": "paper-design-mcp",
             "creator": "Paper.design",
             "install": "claude mcp add paper --transport http http://127.0.0.1:29979/mcp --scope user",
-            "what_it_does": "Local MCP server for Paper.design (modern design tool, macOS + Windows). 24 tools for reading/writing design files: get_jsx, get_screenshot, get_computed_styles, write_html, update_styles, create_artboard, etc. Alternative to Figma + Stitch for designers who use Paper.",
+            "what_it_does": "Local MCP server for Paper.design. Used in Phase 4c to export composed graphics via get_screenshot. See references/integration-verification.md section 4 for full tool list, capabilities, and gotchas, and references/phases/phase-4c-paper.md for the pipeline flow.",
             "requires": "Paper Desktop app running with a file open",
+            "category": "mcp_server",
             "in_default_stack": false,
             "requires_env": [],
             "url": "https://paper.design/docs/mcp",
             "recommended_if_using": "paper_as_design_tool",
-            "note": "Only install if the user is actively designing in Paper. Not an aesthetic-opinion skill so it does not conflict with taste-skill or the chosen opinion skill."
+            "note": "Only install if the user is actively designing in Paper. Not a peer skill — this is an MCP server. Canonical details live in integration-verification.md, not here."
         },
         {
             "name": "leon-furze-astro-skills",

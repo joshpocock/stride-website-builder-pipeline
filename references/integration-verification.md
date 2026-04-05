@@ -5,7 +5,7 @@ dateVerified: "2026-04-04"
 
 # Integration Verification Report
 
-Researched 2026-04-04 for the `website-builder-pipeline` skill.
+Researched 2026-04-04 for the `stride-website-builder-pipeline` skill.
 
 ## Summary
 
@@ -186,7 +186,7 @@ Verify with `/mcp` inside Claude Code — Paper should show in the list.
 
 ---
 
-## Implementation Notes for website-builder-pipeline
+## Implementation Notes for stride-website-builder-pipeline
 
 Based on this verification, the skill should:
 

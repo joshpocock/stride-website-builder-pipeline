@@ -1,7 +1,7 @@
 # SEO Optimization Pass Prompt
 
 Run AFTER the initial build is complete and user has approved the design.
-This is Phase 7 of the website-builder-pipeline skill.
+This is Phase 7 of the stride-website-builder-pipeline skill.
 
 Full 2026 SEO playbook lives at `references/seo-research-2026.md` (filled
 by the SEO deep research agent). This prompt references that document.

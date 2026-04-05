@@ -8,7 +8,7 @@ stack: Next.js 15 App Router, React, Vercel/Netlify
 
 # SEO Research 2026 — Reference for the Website Builder Pipeline Skill
 
-This document is the canonical SEO reference loaded by the `stride-website-builder-pipeline` skill during Phase 7. Every landing page the skill ships for a local service business (dental, restaurant, barber, real estate, fitness) should satisfy the Automated Audit Checklist at the bottom of this file — that checklist is the minimum bar for local-SEO quality, and skipping items there tends to show up as lost AI Overview citations and weaker local pack rankings. Nothing here is generic — every item is directly actionable in code.
+This document is the canonical SEO reference loaded by the `stride-stride-website-builder-pipeline` skill during Phase 7. Every landing page the skill ships for a local service business (dental, restaurant, barber, real estate, fitness) should satisfy the Automated Audit Checklist at the bottom of this file — that checklist is the minimum bar for local-SEO quality, and skipping items there tends to show up as lost AI Overview citations and weaker local pack rankings. Nothing here is generic — every item is directly actionable in code.
 
 ## Table of Contents
 
@@ -852,7 +852,7 @@ Each geo page needs: unique local copy (not a swap), staff who serve that area, 
 **This is the list the skill iterates through on every build.** Each item is a boolean check + a fix action. Save the results to `audit-report.json` next to the build output.
 
 ```yaml
-# website-builder-pipeline/audit.yaml
+# stride-website-builder-pipeline/audit.yaml
 crawlability:
   - id: robots_txt_exists
     check: GET /robots.txt returns 200
@@ -1091,4 +1091,4 @@ redirects:
 
 ---
 
-*End of seo-research-2026.md — load this file into the website-builder-pipeline skill and iterate §15 on every build.*
+*End of seo-research-2026.md — load this file into the stride-website-builder-pipeline skill and iterate §15 on every build.*
