@@ -25,16 +25,18 @@ Full question spec for the website-builder-pipeline skill. Each question is invo
 **question:** "Where does the brand come from?"
 **header:** "Brand source"
 **options:**
-- Existing website URL (Firecrawl extracts everything)
-- Upload logo + colors + fonts manually
-- Build from scratch (I'll define it with you)
-- Screenshots (Claude vision extracts from images)
+- Existing website URL (Firecrawl extracts everything — requires `FIRECRAWL_API_KEY`)
+- Upload logo + colors + fonts manually (no API key needed)
+- Screenshots (Claude vision extracts from images — no API key needed)
+- Build from scratch (I'll define it with you, no API key needed)
+- Let AI decide (skip brand questions entirely — Claude picks vibe + colors + fonts from your business info, no API key needed)
 
 **adaptive:**
-- "Existing URL" → ask for URL, then skip Q6 color palette, Q7 fonts
-- "Screenshots" → request uploads, use vision extraction
+- "Existing URL" → ask for URL, then skip Q6 color palette, Q7 fonts. If `FIRECRAWL_API_KEY` is missing, surface the issue and offer to switch to another path.
+- "Screenshots" → request uploads, use vision extraction, skip Q6 + Q7
 - "Build from scratch" → keep Q6 + Q7, add sub-questions
-- "Upload manually" → parse inputs into brand.json
+- "Upload manually" → parse inputs into brand.json, skip Q6 + Q7
+- "Let AI decide" → skip Q6, Q7 entirely; Claude auto-generates brand.json from Q3 + Q4 + Q5 after the survey
 
 ---
 

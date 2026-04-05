@@ -43,9 +43,12 @@ Answer the survey. Wait about 15 minutes. Get a deployed site with full SEO.
 
 **Required env vars:**
 
-- `FIRECRAWL_API_KEY` — brand extraction (free tier: 500 scrapes/mo)
-- `KIE_AI_API_KEY` — Kling 3.0 video (always) + Nano Banana Pro image fallback
 - `ANTHROPIC_API_KEY` — Claude Code itself (Pro or Max plan recommended)
+- **One image provider** (either `WAVESPEED_API_KEY` *or* `KIE_AI_API_KEY`) — needed for hero asset generation. `KIE_AI_API_KEY` is also required if you want Kling video animation.
+
+**Conditionally required (only if you pick that path in the survey):**
+
+- `FIRECRAWL_API_KEY` — only needed if you choose **"Existing URL"** as your brand source in Q2. Free tier: 500 scrapes/mo. If you don't have it, the survey gives you four other brand paths (manual, screenshots, build from scratch, let AI decide) that need no API key.
 
 **Strongly recommended (preferred image provider):**
 

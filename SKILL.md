@@ -1,5 +1,5 @@
 ---
-name: website-builder-pipeline
+name: stride-website-builder-pipeline
 description: >
   End-to-end premium website builder. Guided survey chains Firecrawl brand
   extraction, NanoBanana 2 image generation, Kling 3.0 video animation,
@@ -66,6 +66,11 @@ Before asking any questions, run a preflight audit. Show the user what is ready 
 4. Check for `brand.json` in current directory (if present, offer to reuse)
 5. Check `~/.claude/website-builder/history.json` for prior runs (memory-aware)
 
+**Env var tiers:**
+- **Required for any run:** one image provider (`WAVESPEED_API_KEY` *or* `KIE_AI_API_KEY`) — pipeline cannot generate hero assets without one.
+- **Required only if user picks Q2 = "Existing URL":** `FIRECRAWL_API_KEY`. If missing when URL path is chosen, tell the user and let them switch to manual / screenshot / AI-decide path instead of blocking.
+- **Optional:** everything else (Vercel, Netlify, Gemini, Google AI Studio). Their absence just disables that specific feature, never blocks the run.
+
 Present results as a color-coded table:
 - ✓ Ready (green)
 - ⚠ Needs key (yellow)
@@ -115,7 +120,9 @@ After Q15, present the generated plan and wait for explicit confirmation before 
 
 ## Phase 2: Brand Extraction
 
-If user chose "Existing URL" in Q2:
+Four possible paths based on Q2. `brand.json` is the single output format regardless of path — it IS the brand guidelines doc the rest of the pipeline reads from. Do not create a separate markdown brand guide; `brand.json` is canonical.
+
+**Path A — Existing URL (requires `FIRECRAWL_API_KEY`):**
 
 1. Read the URL
 2. Call `references/call-firecrawl.py` with the URL and a custom extract schema for brand fields
@@ -132,11 +139,13 @@ If user chose "Existing URL" in Q2:
    ```
 4. Show extracted brand to user, ask "any corrections?"
 
-If user provided screenshots instead: use Claude vision to extract the same fields and write `brand.json`.
+**Path B — Screenshots (no API key needed):** use Claude vision to extract the same fields from user-uploaded images and write `brand.json`. Uses the prompt in `references/build-prompts/brand-extract.md`.
 
-If user chose "Build from scratch": ask for the fields directly via `AskUserQuestion`.
+**Path C — Manual (no API key needed):** ask the user for each field directly via `AskUserQuestion` — name, tagline, primary/secondary/accent/bg colors (hex), heading + body font, 3 personality adjectives. Write `brand.json` from their answers.
 
-**Reference:** `references/build-prompts/brand-extract.md` for the vision extraction prompt.
+**Path D — Let AI decide (no API key needed):** user provides only company name + one-sentence description + target audience (already collected in Q3/Q4). Claude picks vibe, palette, and fonts from the vibe archetype that best matches the business, then writes `brand.json`. Show the AI-picked brand to user and let them tweak any field before proceeding. This is the "just do what it wants" escape hatch — useful when the user has no brand yet or doesn't care about design specifics.
+
+**Firecrawl is NOT required for Paths B/C/D.** If `FIRECRAWL_API_KEY` is missing and the user picked Path A, surface the missing key and offer to switch to Path B, C, or D instead of blocking.
 
 ---
 
