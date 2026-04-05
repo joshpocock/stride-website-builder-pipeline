@@ -125,7 +125,7 @@ Four possible paths based on Q2. `brand.json` is the single output format regard
 **Path A — Existing URL (requires `FIRECRAWL_API_KEY`):**
 
 1. Read the URL
-2. Call `references/call-firecrawl.py` with the URL and a custom extract schema for brand fields
+2. Call `scripts/call-firecrawl.py` with the URL and a custom extract schema for brand fields
 3. Parse response into `brand.json`:
    ```json
    {
@@ -239,7 +239,7 @@ Generate two image prompts from the survey answers (product, vibe, brand colors)
 
 **Provider selection (check env vars in order):**
 
-1. **If `WAVESPEED_API_KEY` is set → PREFERRED.** Use Gemini 3 Pro Image via `references/call-wavespeed.py`:
+1. **If `WAVESPEED_API_KEY` is set → PREFERRED.** Use Gemini 3 Pro Image via `scripts/call-wavespeed.py`:
    - Model: `gemini-3-pro` (shortcut for `google/gemini-3-pro-image/text-to-image`)
    - Aspect ratio: `16:9`
    - Native 4K output (no upscale needed for retina desktop heroes)
@@ -247,7 +247,7 @@ Generate two image prompts from the survey answers (product, vibe, brand colors)
    - Batch: 4 variants per prompt
    - Why preferred: newest Gemini family model, genuine 4K native, cheaper than Nano Banana Pro on Wavespeed
 
-2. **Else if `KIE_AI_API_KEY` is set → FALLBACK.** Use Nano Banana Pro via `references/call-kie.py`:
+2. **Else if `KIE_AI_API_KEY` is set → FALLBACK.** Use Nano Banana Pro via `scripts/call-kie.py`:
    - Model: `nanoBanana2` (or `nanoBananaPro` if the survey picked a premium tier)
    - Aspect ratio: `16:9`
    - Resolution: 2K
@@ -264,7 +264,7 @@ Show all 8 generated images (4 start + 4 end) to user, ask them to pick one of e
 **If Wavespeed was used for 4a**, run an additional pass through Nano Banana Pro Edit Multi via `call-wavespeed.py` to guarantee the picked start + end frames share identical lighting, color, and camera — this is critical for the Kling transition in 4b to look seamless.
 
 ```
-python references/call-wavespeed.py lock-pair \
+python scripts/call-wavespeed.py lock-pair \
   --start <picked_start_url> \
   --end <picked_end_url> \
   --prompt "Match lighting, color temperature, and camera angle across these two frames exactly. Preserve the subject state in each (assembled in the first, exploded in the second). Keep the background and framing identical." \
@@ -277,7 +277,7 @@ This writes `locked-start.webp` and `locked-end.webp` into the project assets fo
 
 ### 4b. Video Animation (Kling 3.0 / Veo 3 / Veo 3.1)
 
-Pick the video model from Q10b. Kie.ai hosts all supported video models via `references/call-kie.py` (see its `VIDEO_MODELS` registry). Quick reference:
+Pick the video model from Q10b. Kie.ai hosts all supported video models via `scripts/call-kie.py` (see its `VIDEO_MODELS` registry). Quick reference:
 
 | Model (Q10b) | `--model` flag | Takes end frame? | Cost tier | Best for |
 |---|---|---|---|---|
@@ -336,7 +336,7 @@ Paper.design is a code-native design tool with a local MCP server. While its pri
 
 **Skip this entire phase if Q1 = "Add to existing project".** Instead: `cd` to the user-provided project root, detect the existing tech stack (look for `package.json`, `astro.config.*`, `svelte.config.*`, `next.config.*`, `remix.config.*`, `vite.config.*`, plain `index.html`), read existing conventions (component folder structure, CSS approach, routing pattern), and drop `brand.json` + `assets/` into a sensible location inside the existing repo (typically `public/brand.json` and `public/assets/` or `src/assets/`). Do NOT overwrite existing files without explicit confirmation.
 
-For new projects, run `references/scaffold-project.py` to create:
+For new projects, run `scripts/scaffold-project.py` to create:
 
 ```
 project-name/
@@ -487,10 +487,10 @@ Also offer to update specific `build-prompts/*.md` files with learnings (Nate He
 | `references/vibe-archetypes.md` | 6 preset aesthetics with dials + sample references |
 | `references/env-template.env` | All env vars the skill can use |
 | `references/recommended-skills.json` | Peer skills + install commands |
-| `references/call-kie.py` | Kie.ai API wrapper (Nano Banana + Kling) — fallback image provider, always used for video |
-| `references/call-wavespeed.py` | Wavespeed API wrapper (Gemini 3 Pro Image + Nano Banana Pro Edit Multi) — preferred image provider when `WAVESPEED_API_KEY` is set |
-| `references/call-firecrawl.py` | Firecrawl brand extraction |
-| `references/scaffold-project.py` | Project folder creator |
+| `scripts/call-kie.py` | Kie.ai API wrapper — Nano Banana image fallback + Kling 3.0 / Veo 3 / Veo 3.1 video |
+| `scripts/call-wavespeed.py` | Wavespeed wrapper — Gemini 3 Pro Image (preferred) + Nano Banana Pro Edit Multi |
+| `scripts/call-firecrawl.py` | Firecrawl brand extraction |
+| `scripts/scaffold-project.py` | Project folder creator |
 | `references/seo-research-2026.md` | Deep SEO 2026 playbook |
 | `references/build-prompts/brand-extract.md` | Vision extraction prompt (screenshots → brand.json) |
 | `references/build-prompts/image-gen-nanobanana.md` | NanoBanana prompt template (fill-in) |

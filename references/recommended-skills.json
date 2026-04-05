@@ -184,7 +184,7 @@
         "preferred": {
             "name": "wavespeed",
             "env_var": "WAVESPEED_API_KEY",
-            "wrapper": "references/call-wavespeed.py",
+            "wrapper": "scripts/call-wavespeed.py",
             "primary_model": "google/gemini-3-pro-image/text-to-image",
             "lock_pair_model": "google/nano-banana-pro/edit-multi",
             "cost_per_image_usd": 0.025,
@@ -194,7 +194,7 @@
         "fallback": {
             "name": "kie_ai",
             "env_var": "KIE_AI_API_KEY",
-            "wrapper": "references/call-kie.py",
+            "wrapper": "scripts/call-kie.py",
             "primary_model": "nanoBanana2",
             "premium_model": "nanoBananaPro",
             "cost_per_image_usd_range": "0.013 to 0.030",

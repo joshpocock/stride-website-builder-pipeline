@@ -27,8 +27,8 @@ Video generation (Kling 3.0) always goes through Kie.ai — Wavespeed does not
 replace Kie.ai for video in this pipeline.
 
 **Wrapper scripts:**
-- `references/call-wavespeed.py image --model gemini-3-pro --prompt "..." --n 4`
-- `references/call-kie.py image --prompt "..." --aspect 16:9 --n 4`
+- `scripts/call-wavespeed.py image --model gemini-3-pro --prompt "..." --n 4`
+- `scripts/call-kie.py image --prompt "..." --aspect 16:9 --n 4`
 
 ---
 
