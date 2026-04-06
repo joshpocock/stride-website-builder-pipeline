@@ -109,7 +109,7 @@ See `references/survey-questions.md` for the full question spec with all options
 7. **Color palette** — *Skipped if Q3 already provided colors*
 8. **Font pairing** — *Skipped if Q3 already provided fonts*
 9. **Hero images** — three sub-axes: **source** (AI generates / upload as-is / upload + AI edits / AI decides), **prompt** (AI writes from 6-stage Cinematic Frame Method / user writes / AI decides), **model** (auto-picked from env: Wavespeed Gemini 3 Pro → Kie Nano Banana Pro)
-10. **Hero animation** — three sub-axes: **style** (exploded / orbit / dolly / pan / static / own MP4 / AI decides), **model** (Kling 3.0 / Veo 3.1 Fast / Veo 3.1 / Veo 3 Fast / Veo 3 / AI picks), **prompt** (AI writes / user writes / AI decides). *Q10b + Q10c skipped if style = static or own MP4*
+10. **Video & animation** — four sub-axes: **placements** (hero background video / scroll-driven frame-by-frame / section accent video / static only / own MP4 — multi-select, user describes each), **model** (Kling 3.0 via Kie / Seedance via Wavespeed / Veo 3 Fast / AI picks), **prompt** (AI writes / user writes / AI decides), **playback mode** per placement (autoplay MP4 vs scroll-driven canvas — different asset pipelines, different implementation). *Skipped entirely if "static only"*
 11. **Sections** — multi-select with smart pre-selection from Q1 + Q6, plus a free-text "+ add your own" field for custom sections
 12. **Deploy target** — Vercel / Netlify / Cloudflare / Manual / Skip
 13. **SEO tier** — Full audit / Basic / Skip. **Never forced** — user's answer always wins, even for local service businesses (we only recommend).

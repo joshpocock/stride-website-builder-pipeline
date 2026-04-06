@@ -182,45 +182,74 @@ User can override via "let me pick the image model" escape hatch if they want to
 
 ---
 
-## Q10: Hero Animation
+## Q10: Video & Animation
 
-### Q10a: Animation Style
+The site may use video in multiple places (hero background, mid-page scroll animation, section accents). This question determines what to generate and how to display it. Two completely different playback modes exist — the user picks per placement.
 
-**question:** "What hero animation style?"
-**header:** "Animation style"
+### Q10a: Video Placements
+
+**question:** "Where do you want video or animation on the site?"
+**header:** "Video placements"
+**multiSelect:** true
 **options:**
-- Exploded view (product decomposes into layers) — *Recommended for products*
-- Cinematic orbit (camera rotates around product)
-- Dolly zoom (camera pushes toward / away)
-- Environment pan (camera travels through a 3D scene)
-- Static image (no animation)
-- I have my own MP4 to use
-- Let AI decide
+- **Hero background video** — autoplay MP4 loop behind the hero section (cinematic, ambient, no user interaction needed)
+- **Scroll-driven frame-by-frame** — user scrolls and the image changes frame by frame (e.g., product being assembled, solar panels going onto a roof). Placed mid-page or in hero. Apple-style scroll animation.
+- **Section accent video** — short autoplay MP4 in a specific non-hero section (e.g., "How it works" step animation)
+- **Static images only** — no video or animation
+- **I have my own MP4(s)** — upload and place them
+- **Let AI decide**
 
-**adaptive:** If "Static" or "Own MP4" → skip Q10b and Q10c entirely.
+For each selected placement, the user should briefly describe what they want to see (e.g., "hero: cinematic golden-hour solar home" or "mid-page scroll: solar panels being installed frame by frame on white background").
+
+**adaptive:**
+- If "Static images only" → skip Q10b, Q10c, Q10d entirely.
+- If "I have my own MP4(s)" → skip Q10b (model) and Q10c (prompt), still ask Q10d (playback mode) per placement.
 
 ### Q10b: Video Model
 
-**question:** "Which video model?"
+**question:** "Which video model for generation?"
 **header:** "Video model"
 **options:**
-- Kling 3.0 (image-to-image with start + end frames, cheapest, best for scroll animations) — *Recommended*
-- Veo 3.1 Fast (newest, balanced speed/quality, single frame input)
-- Veo 3.1 (newest, highest quality, slower)
-- Veo 3 Fast (mid quality, faster)
-- Veo 3 (high quality, slower)
-- Let AI decide (picks based on Q10a + cost budget)
-
-**note:** Kling is the only model that takes both start + end frames for precise interpolation. Veo models take a single start frame plus prompt — better for freeform motion, worse for locked scroll pairs.
+- Kling 3.0 via Kie.ai (image-to-image with start + end frames, cheapest) — *Recommended for scroll-driven*
+- Seedance v1 Pro via Wavespeed (also supports start + end frames, fallback if Kie credits exhausted)
+- Veo 3 Fast via Wavespeed or Gemini API (single frame input, 4/6/8s duration only)
+- Let AI decide (picks based on placement type + which API keys have credits)
 
 ### Q10c: Prompt Source
 
-**question:** "Where should the video prompt come from?"
-**header:** "Video prompt"
+**question:** "Where should the video prompts come from?"
+**header:** "Video prompts"
 **options:**
-- AI writes it from your animation style choice — *Recommended*
-- I'll write my own prompt
+- AI writes them from your placement descriptions — *Recommended*
+- I'll write my own prompts
 - Let AI decide
+
+### Q10d: Playback Mode (per placement)
+
+**question:** "How should each video play on the site?"
+**header:** "Playback mode"
+
+This is critical — the two modes have completely different asset pipelines and implementation:
+
+| Mode | What the user sees | Asset pipeline | Implementation |
+|---|---|---|---|
+| **Autoplay MP4** | Video loops in background, no interaction | Generate MP4 → compress → serve as `<video autoplay muted loop playsInline>` with poster image fallback. Simple, small bundle impact. | `<video>` tag with poster, navy/dark gradient scrim for text readability. Mobile: show poster only (skip video to save bandwidth). |
+| **Scroll-driven frame-by-frame** | Image changes as user scrolls — Apple-style scrub | Generate MP4 → `ffmpeg` extract 60-100 frames as WebP → preload into JS `Image()` objects on mount → draw to `<canvas>` on scroll | Single `<canvas>` element. Frames preloaded into a `useRef` array (NOT React state — no re-renders). `requestAnimationFrame` throttled scroll handler. `ctx.drawImage()` for each frame change. Progress bar optional via single `useState`. **No stacked `<Image>` components** — that approach causes 60-100 DOM elements and kills performance. Canvas is the only pattern that works smoothly. |
+
+**Assign one mode per placement:**
+- Hero background video → usually **Autoplay MP4**
+- Scroll-driven frame-by-frame → always **Scroll-driven** (by definition)
+- Section accent video → usually **Autoplay MP4** (shorter, ambient)
+
+**If both modes are used on the same page**, generate separate videos for each — don't try to reuse the same MP4 for both autoplay and frame extraction (different compression needs, different aspect ratios, different content).
+
+**Reference for scroll-driven implementation:** The correct pattern (discovered and verified in production):
+1. `ffmpeg -i hero.mp4 -vf "fps=15,scale=1920:-1" -q:v 80 frames/frame-%03d.webp` — extract ~60-100 frames at 15fps as WebP
+2. On mount: `frames.forEach((src) => { const img = new Image(); img.src = src; imagesRef.current.push(img); })` — preload into memory via refs, not state
+3. On scroll: `const progress = scrollY / (docHeight - viewportHeight); const idx = Math.floor(progress * (totalFrames - 1));` — map scroll to frame index
+4. Draw: `if (idx !== frameRef.current) { ctx.drawImage(imagesRef.current[idx], 0, 0, canvas.width, canvas.height); frameRef.current = idx; }` — only repaint when frame changes
+5. Throttle via `requestAnimationFrame` with a `ticking` flag to avoid redundant calls
+6. **Do NOT use stacked `<Image>` components with opacity toggling** — creates 60-100 DOM nodes and causes severe lag. Canvas is mandatory for smooth scrub.
 
 **Reference:** `build-prompts/video-gen-kling.md`
 

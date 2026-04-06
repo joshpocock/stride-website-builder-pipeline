@@ -118,20 +118,90 @@ All assets are in `./assets/`:
 - `start-frame.webp`, `end-frame.webp` — if you need them for feature sections
 - Logo (if any) — from brand.json logo_url
 
-## Hero Section
+## Video & Animation Playback
 
-Create an Apple-style scroll-driven animation:
-1. Use ffmpeg to extract 100+ frames from `assets/hero.mp4` as WebP images at
-   1920x1080 or the MP4's native resolution
-2. Preload the first 10 frames for instant render
-3. Lazy-load the remaining frames as the user scrolls
-4. Bind frame index to scroll position using requestAnimationFrame
-5. Scroll down = play forward, scroll up = play backward
-6. On mobile (<768px viewport): replace with `hero-mobile.jpg` as a static
-   hero — do NOT load the video
+The site may have multiple video placements (hero, mid-page, section accents).
+Each placement uses one of two playback modes — pick per the survey answers:
 
-Overlay the hero headline and CTA on top of the animation using the fonts
-and colors above.
+### Mode A: Autoplay MP4 (hero background, section accents)
+
+Simple background video that loops without user interaction:
+
+```html
+<video autoPlay muted loop playsInline poster="/hero-poster.webp"
+  className="absolute inset-0 h-full w-full object-cover">
+  <source src="/hero-video.mp4" type="video/mp4" />
+</video>
+```
+
+- Overlay a gradient scrim (e.g., `bg-gradient-to-r from-navy/90 via-navy/70 to-transparent`) so text stays legible
+- Set `poster` to a WebP still extracted at t=0.5s so LCP is fast before the video loads
+- On mobile (<768px): show poster only, skip loading the video (save bandwidth on cellular)
+- Compress with `ffmpeg -i hero.mp4 -c:v libx264 -crf 23 -preset medium hero-compressed.mp4` to keep under ~2-3MB
+
+### Mode B: Scroll-driven frame-by-frame (Apple-style scrub)
+
+User scrolls and the image changes frame by frame. Used for product assembly,
+installation sequences, or any "progress through a process" visual:
+
+**Asset pipeline:**
+1. Generate video via Kling 3.0 or Seedance
+2. Extract frames: `ffmpeg -i hero.mp4 -vf "fps=15,scale=1920:-1" -q:v 80 frames/frame-%03d.webp`
+   → produces ~60-100 WebP frames at 15fps
+3. Place frames in `public/frames/` or `public/scroll-frames/`
+
+**Implementation (the ONLY pattern that works smoothly — verified in production):**
+
+Use a single `<canvas>` element + preloaded `Image()` objects in memory:
+
+1. **Preload frames into a ref (not state) on mount:**
+   ```js
+   const imagesRef = useRef([]);
+   useEffect(() => {
+     framePaths.forEach((src) => {
+       const img = new Image();
+       img.src = src;
+       imagesRef.current.push(img);
+     });
+   }, []);
+   ```
+
+2. **Draw to canvas on scroll via requestAnimationFrame:**
+   ```js
+   const frameRef = useRef(0);
+   const tickingRef = useRef(false);
+   useEffect(() => {
+     const onScroll = () => {
+       if (tickingRef.current) return;
+       tickingRef.current = true;
+       requestAnimationFrame(() => {
+         const progress = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+         const idx = Math.floor(progress * (imagesRef.current.length - 1));
+         if (idx !== frameRef.current && imagesRef.current[idx]?.complete) {
+           const ctx = canvasRef.current?.getContext("2d");
+           if (ctx) ctx.drawImage(imagesRef.current[idx], 0, 0, canvas.width, canvas.height);
+           frameRef.current = idx;
+         }
+         tickingRef.current = false;
+       });
+     };
+     window.addEventListener("scroll", onScroll, { passive: true });
+     return () => window.removeEventListener("scroll", onScroll);
+   }, []);
+   ```
+
+3. **On mobile:** show a single static poster image instead of loading 60-100 frames
+
+**What NOT to do (causes severe lag — verified in production):**
+- Do NOT stack 60-100 `<Image>` components and toggle `opacity-0`/`opacity-100` based on scroll. This creates 60-100 DOM nodes that all render simultaneously, and React re-renders on every scroll event to flip classNames. It works on desktop at first but degrades rapidly.
+- Do NOT use React state for the frame index — every setState triggers a re-render. Use `useRef` for the frame index and only use `useState` for optional UI like a progress bar.
+
+### Choosing per section
+
+- Hero background → usually Mode A (autoplay MP4)
+- "Product assembly" / "installation process" mid-page → Mode B (scroll-driven)
+- Section accent (How It Works animation, etc.) → Mode A (short autoplay clip)
+- Both modes on the same page → generate separate videos for each (different content, different compression needs)
 
 ## Sections (build in this order)
 
