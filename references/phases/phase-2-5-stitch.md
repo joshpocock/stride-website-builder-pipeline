@@ -61,9 +61,11 @@ For each section the user picked in Q11, call `mcp__stitch__generate_screen_from
 - `projectId` ← the one from step 1
 - `deviceType` ← `DESKTOP` (mobile responsiveness happens in Phase 6)
 - `modelId` ← `GEMINI_3_1_PRO` by default, fall back to `GEMINI_3_FLASH` on rate limits
-- `prompt` ← filled from `references/build-prompts/stitch-section-prompts.md` using `{brand_name}`, `{brand.description}`, `{vibe_archetype}`, `{target_audience}`, and section-specific instructions
+- `prompt` ← filled from `references/build-prompts/stitch-section-prompts.md` using `{brand_name}`, `{brand.description}`, `{vibe_archetype}`, `{target_audience}`, and section-specific instructions. **Keep each prompt under ~1500 tokens** — Stitch times out on large monolithic prompts.
 
-**Parallelize these calls.** `generate_screen_from_text` is async and each call can take a few minutes. Running them sequentially for a 6-section landing page means 15-20 minutes of wall time. Running them in parallel (multiple tool calls in one assistant turn) drops that to ~3-5 minutes.
+**Always generate per-section, never monolithic.** A production run in April 2026 confirmed that passing a single prompt describing an entire multi-section landing page (all copy + all design system + all section instructions) causes the Stitch MCP HTTP call to time out client-side, and `list_screens` confirms nothing was generated server-side either. The monolithic approach seems like it would produce more coherent results, but in practice it just fails. Split every landing page into one `generate_screen_from_text` call per section — the design system handles cross-section consistency.
+
+**Parallelize 2-3 calls at a time.** `generate_screen_from_text` is async and each call can take a few minutes. Running them sequentially for a 6-section landing page means 15-20 minutes of wall time. Issuing 2-3 parallel calls per turn drops that to ~3-5 minutes. Avoid issuing all 6+ at once — too many simultaneous MCP calls can hit rate limits or connection pool exhaustion.
 
 ### 5. Optional variants
 

@@ -70,7 +70,12 @@ Before asking any questions, run a preflight audit. Show the user what is ready 
    - **Stitch MCP** (tool names start with `mcp__stitch__`) — Google Stitch AI layout generator. If detected, enables Phase 2.5.
    - **Paper.design MCP** (tool names include `paper`) — then additionally HEAD-request `http://127.0.0.1:29979/mcp` with a 1-second timeout. Only counted as "available" if both the MCP is registered AND the endpoint responds (meaning Paper Desktop is actually running with a file open). If detected, enables Phase 4c.
    - **21st.dev Magic MCP** — premium component library. If detected, enables mid-Phase 6 component injection.
-   For each detected MCP, present a one-line opt-in during the preflight confirmation: *"Stitch MCP detected — generate per-section layout scaffolds after brand extraction? [Y/n]"*. The user answers once; the skill remembers the choice for this run.
+   For each detected MCP, ask the user explicitly via `AskUserQuestion` (do not just show it in the status table — present each as a yes/no question the user must actively answer): *"Stitch MCP detected — generate per-section layout scaffolds after brand extraction? [Y/n]"*. The user answers once; the skill remembers the choice for this run.
+7. **Smoke-test provider scripts.** Script rot is real — a production run in April 2026 found `call-kie.py` completely broken because the Kie.ai API surface changed. Instead of trusting file-exists as "green," run one cheap read call per provider:
+   - **Wavespeed:** `curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $WAVESPEED_API_KEY" $BASE_URL/models` or similar model-list endpoint. If 200 → ✓; if 4xx/5xx → ⚠ "Wavespeed API returned {code} — script may be stale"
+   - **Kie.ai:** `curl -s -H "Authorization: Bearer $KIE_AI_API_KEY" https://api.kie.ai/api/v1/chat/credit`. If `{"code":200}` → ✓; else → ⚠ "Kie.ai credit check failed — script may be stale"
+   - **Firecrawl:** `curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $FIRECRAWL_API_KEY" https://api.firecrawl.dev/v1/scrape -X POST -d '{}'`. If 400 (bad request but auth worked) → ✓; if 401/403 → ⚠ "Firecrawl auth failed"
+   Total cost: $0 (read-only calls, no generation). Total time: <3 seconds. If any provider flags ⚠, tell the user which script is suspect and recommend checking the script's header comments for known issues before relying on that provider in later phases.
 
 **Env var tiers:**
 - **Required for any run:** one image provider (`WAVESPEED_API_KEY` *or* `KIE_AI_API_KEY`) — pipeline cannot generate hero assets without one.
@@ -214,65 +219,57 @@ Generate two image prompts from the survey answers (product, vibe, brand colors)
    - Aspect ratio: `16:9`
    - Native 4K output (no upscale needed for retina desktop heroes)
    - Cost: ~$0.025/img
-   - Batch: 4 variants per prompt
-   - Why preferred: newest Gemini family model, genuine 4K native, cheaper than Nano Banana Pro on Wavespeed
+   - **Gemini 3 Pro returns exactly 1 variant per call** regardless of `--n`. For N variants, issue N separate `generate_image()` calls with different `--seed` values (costs N × $0.025). This is a Gemini 3 Pro limitation — other Wavespeed models (Nano Banana Pro, Gemini 2.5 Flash) do support true --n batching.
+   - Why preferred: newest Gemini family model, genuine 4K native
 
 2. **Else if `KIE_AI_API_KEY` is set → FALLBACK.** Use Nano Banana Pro via `scripts/call-kie.py`:
    - Model: `nanoBanana2` (or `nanoBananaPro` if the survey picked a premium tier)
    - Aspect ratio: `16:9`
    - Resolution: 2K
-   - n_frames: N/A (image mode)
-   - Batch: 4 variants per prompt
-   - Safety rules from memory: do NOT use `quality` param on Kie.ai (breaks the request); use `size` (standard/high), `aspect_ratio`, `n_frames` (required for video)
+   - Batch: up to 4 variants per call (true batching works here)
+   - **Note:** `call-kie.py` is partially broken as of April 2026 (the Kie.ai API surface changed). Image generation may work with the corrected BASE_URL but is unverified. See the warning block at the top of the file. If it fails, fall back to Wavespeed even for non-preferred paths.
+   - Safety rules: do NOT use `quality` param on Kie.ai (breaks the request); use `size` (standard/high), `aspect_ratio`
 
 3. **Else → ERROR.** Tell the user to set one of the two keys in `.env` before rerunning. Do not try to proceed without image generation.
 
-Show all 8 generated images (4 start + 4 end) to user, ask them to pick one of each. Download picked ones to `project/assets/`.
+Show generated images to the user (4 start variants + 4 end variants if using true batching, or 1 of each if Gemini 3 Pro), ask them to pick one of each. Offer to regenerate with feedback if none are satisfactory. Download picked ones to `project/assets/`.
 
-### 4a.5 Lock-Pair Matching Pass (Wavespeed only)
+### 4a.5 Lock-Pair Matching Pass — CURRENTLY BROKEN (skip)
 
-**If Wavespeed was used for 4a**, run an additional pass through Nano Banana Pro Edit Multi via `call-wavespeed.py` to guarantee the picked start + end frames share identical lighting, color, and camera — this is critical for the Kling transition in 4b to look seamless.
+**⚠️ The `lock_pair()` function in `call-wavespeed.py` returns HTTP 400 as of April 2026.** The nano-banana-pro/edit-multi parameter schema drifted (suspected: `images` field name, `num_images`, or `aspect_ratio` changed). The function is deprecated with a clear `NotImplementedError` until the correct body shape is re-verified.
 
-```
-python scripts/call-wavespeed.py lock-pair \
-  --start <picked_start_url> \
-  --end <picked_end_url> \
-  --prompt "Match lighting, color temperature, and camera angle across these two frames exactly. Preserve the subject state in each (assembled in the first, exploded in the second). Keep the background and framing identical." \
-  --out project/assets/
-```
+**Workaround:** skip the lock-pair step entirely. Generate start + end frames with consistent prompts (same scene, same lighting, same camera angle described in text) and different subject states. Rely on prompt consistency to carry coherence across the pair. The downstream video transition (Seedance / Kling) will still work — the transition will just be slightly less visually locked between the two frames than with a verified lock-pair pass. For most landing pages, the quality difference is negligible.
 
-This writes `locked-start.webp` and `locked-end.webp` into the project assets folder. Use those as the inputs to Phase 4b instead of the raw picks.
+### 4b. Video Animation (Seedance / Veo 3 via Wavespeed)
 
-**Skip this step if Kie.ai was used in 4a** — Kie.ai Nano Banana already includes internal coherence between variants in the same batch, so the locked-pair pass is redundant.
+Pick the video model from Q10b. **Use `scripts/call-wavespeed.py video`** for all video generation — the Kie.ai video path is broken as of April 2026. See `VIDEO_MODELS` registry in `call-wavespeed.py` for the full list.
 
-### 4b. Video Animation (Kling 3.0 / Veo 3 / Veo 3.1)
+**Verified working models on Wavespeed (April 2026):**
 
-Pick the video model from Q10b. Kie.ai hosts all supported video models via `scripts/call-kie.py` (see its `VIDEO_MODELS` registry). Quick reference:
-
-| Model (Q10b) | `--model` flag | Takes end frame? | Cost tier | Best for |
+| Model (Q10b) | `--model` flag | Takes end frame? | Duration | Best for |
 |---|---|---|---|---|
-| Kling 3.0 | `kling3` | ✅ Yes | cheap | Scroll-bound hero with locked start/end (default) |
-| Veo 3.1 Fast | `veo3.1-fast` | ❌ No | mid | Freeform hero motion, fast turnaround |
-| Veo 3.1 | `veo3.1` | ❌ No | high | Premium freeform hero, slower render |
-| Veo 3 Fast | `veo3-fast` | ❌ No | mid | Older Veo, mid quality |
-| Veo 3 | `veo3` | ❌ No | high | Older Veo, high quality |
+| Seedance v1 Pro | `seedance-pro` | ✅ Yes (via `last_image`) | any | Scroll-bound hero with start+end frames (**default**) |
+| Seedance v1 Lite | `seedance-lite` | ✅ Yes | any | Same as Pro, cheaper, lighter quality |
+| Veo 3 Fast | `veo3-fast` | ❌ No | 4, 6, or 8s only | Freeform hero motion from single frame |
+
+**Not available on Wavespeed:** Kling models returned "model not found" on all tested path patterns (`kwaivgi/kling-v2-1-master/image-to-video`, `kwaivgi/kling-v2-master/image-to-video`). Kling is currently only on Kie.ai, and Kie.ai's video endpoint is broken. If start+end frame interpolation is needed, use Seedance Pro — it supports both frames.
 
 **Prompt generation (Q10c):**
-- If user chose "AI writes" → fill `references/build-prompts/video-gen-kling.md` with survey answers
+- If user chose "AI writes" → fill `references/build-prompts/video-gen-kling.md` with survey answers (the prompt template works for any i2v model, not just Kling)
 - If user chose "I'll write my own" → ask them for the prompt directly via `AskUserQuestion`
-- If user chose "Let AI decide" → same as AI writes, but also auto-pick Q10b based on Q10a (exploded/orbit → Kling since those need locked start+end; dolly/pan → Veo 3.1 Fast)
+- If user chose "Let AI decide" → auto-pick model based on Q10a (exploded/orbit → Seedance Pro since those need locked start+end; dolly/pan → Veo 3 Fast for freeform)
 
-**Call `call-kie.py video`:**
-- `--start` → picked start frame URL (always)
-- `--end` → picked end frame URL (only if model is Kling; ignored for Veo)
+**Call `call-wavespeed.py video`:**
+- `--start` → picked start frame URL (always — use the `URL:` line printed by the image subcommand, not the local path)
+- `--end` → picked end frame URL (only for Seedance models; Veo doesn't support end frames)
 - `--prompt` → from the prompt step above
-- `--duration` → 5
+- `--duration` → 5 (Seedance) or 4/6/8 (Veo 3 Fast — other values rejected)
 - `--aspect` → `16:9`
 - `--model` → from Q10b
 
 Download the MP4 to `project/assets/hero.mp4`. Run ffmpeg to extract a mobile still: `hero-mobile.jpg`.
 
-**Cost budget:** Kling ~$0.50, Veo Fast ~$1.50, Veo full ~$4 per 5s clip. Full run budget: $2-10. Alert user if they hit $10.
+**Cost budget:** Seedance Pro ~$0.50, Veo Fast ~$1.50 per clip. Full run budget: $2-10. Alert user if they hit $10.
 
 ### 4c. Paper.design Graphic Exports (optional)
 

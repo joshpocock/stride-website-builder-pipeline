@@ -42,6 +42,12 @@ For each section on the eligible list that was selected in Q11, Claude calls the
 
 21st.dev returns 1-3 component options. Claude picks the best fit based on vibe compatibility. If multiple options look equally good, present them to the user and ask which they prefer.
 
+**Validate the response before using it.** A production run in April 2026 found 21st.dev Magic MCP sometimes returns malformed responses — literally `[object Object]` followed by generic Shadcn/ui instructions, with the actual component JSX missing. This is a serialization bug on the 21st.dev server side (they're calling `String(someObject)` instead of `JSON.stringify()`).
+
+**Response validation step:** after every Magic MCP call, check the response for recognizable JSX (look for `<`, `className=`, `export`, `function`, `const`). If the response:
+- **Contains valid JSX/TSX** → use it. Style to brand tokens and insert.
+- **Contains `[object Object]`** or is missing JSX entirely → retry once. If the retry also fails, fall back to custom-building that section from scratch. Log the failure in `build-log.md` with the raw response for Phase 9 learnings. Don't block the build on a flaky MCP response.
+
 Insert the component into the build, then style it to match brand tokens (colors, fonts, spacing, roundness) from the design system.
 
 ### 4. Log the choice
