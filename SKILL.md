@@ -243,19 +243,26 @@ Show generated images to the user (4 start variants + 4 end variants if using tr
 
 **Workaround:** skip the lock-pair step entirely. Generate start + end frames with consistent prompts (same scene, same lighting, same camera angle described in text) and different subject states. Rely on prompt consistency to carry coherence across the pair. The downstream video transition (Seedance / Kling) will still work — the transition will just be slightly less visually locked between the two frames than with a verified lock-pair pass. For most landing pages, the quality difference is negligible.
 
-### 4b. Video Animation (Seedance / Veo 3 via Wavespeed)
+### 4b. Video Animation (Kling 3.0 via Kie.ai / Seedance & Veo via Wavespeed)
 
-Pick the video model from Q10b. **Use `scripts/call-wavespeed.py video`** for all video generation — the Kie.ai video path is broken as of April 2026. See `VIDEO_MODELS` registry in `call-wavespeed.py` for the full list.
+Pick the video model from Q10b. Two providers available:
 
-**Verified working models on Wavespeed (April 2026):**
+**Kie.ai — Kling 3.0 (verified April 2026):**
 
-| Model (Q10b) | `--model` flag | Takes end frame? | Duration | Best for |
-|---|---|---|---|---|
-| Seedance v1 Pro | `seedance-pro` | ✅ Yes (via `last_image`) | any | Scroll-bound hero with start+end frames (**default**) |
-| Seedance v1 Lite | `seedance-lite` | ✅ Yes | any | Same as Pro, cheaper, lighter quality |
-| Veo 3 Fast | `veo3-fast` | ❌ No | 4, 6, or 8s only | Freeform hero motion from single frame |
+| Model | Script | `--model` flag | Takes end frame? | Duration | Best for |
+|---|---|---|---|---|---|
+| Kling 3.0 | `scripts/call-kie.py video` | `kling-3.0` | ✅ Yes (via `image_urls[1]`) | 1-12s | Scroll-bound hero with start+end frames (**recommended default**) |
 
-**Not available on Wavespeed:** Kling models returned "model not found" on all tested path patterns (`kwaivgi/kling-v2-1-master/image-to-video`, `kwaivgi/kling-v2-master/image-to-video`). Kling is currently only on Kie.ai, and Kie.ai's video endpoint is broken. If start+end frame interpolation is needed, use Seedance Pro — it supports both frames.
+**Critical:** the Kie.ai model ID is `"kling-3.0/video"` — NOT `"kling3"`, `"kling-3"`, or `"kling-3.0"`. The `/video` suffix is required. The script handles this automatically. Supports `mode: "pro"` (higher resolution) or `"standard"` (faster/cheaper).
+
+**Wavespeed — Seedance & Veo (verified April 2026):**
+
+| Model | Script | `--model` flag | Takes end frame? | Duration | Best for |
+|---|---|---|---|---|---|
+| Seedance v1 Pro | `scripts/call-wavespeed.py video` | `seedance-pro` | ✅ Yes (via `last_image`) | any | Alternative to Kling for start+end interpolation |
+| Veo 3 Fast | `scripts/call-wavespeed.py video` | `veo3-fast` | ❌ No | 4, 6, or 8s only | Freeform hero motion from single frame |
+
+**Provider selection:** If `KIE_AI_API_KEY` is set, prefer Kling 3.0 on Kie.ai (cheapest, best start+end support). If Kie credits are exhausted or key is missing, fall back to Wavespeed Seedance Pro. If `WAVESPEED_API_KEY` is also exhausted, try Veo 3 Fast through the Google Gemini API if `GEMINI_API_KEY` is set.
 
 **Prompt generation (Q10c):**
 - If user chose "AI writes" → fill `references/build-prompts/video-gen-kling.md` with survey answers (the prompt template works for any i2v model, not just Kling)

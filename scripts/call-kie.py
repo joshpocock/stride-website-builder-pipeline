@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-Kie.ai API wrapper — Nano Banana Pro + Nano Banana 2 + Nano Banana Edit.
+Kie.ai API wrapper — Nano Banana Pro / Nano Banana / Nano Banana Edit + Kling 3.0 video.
 
 Rewritten April 2026 against the current Kie.ai API docs:
-- https://docs.kie.ai/market/google/nanobanana2
-- https://docs.kie.ai/market/google/pro-image-to-image
-- https://docs.kie.ai/market/google/nano-banana-edit
+- https://docs.kie.ai/market/google/pro-image-to-image (Nano Banana Pro)
+- https://docs.kie.ai/market/google/nanobanana2 (Nano Banana standard)
+- https://docs.kie.ai/market/google/nano-banana-edit (Nano Banana Edit)
+- https://docs.kie.ai/market/kling/kling-3-0 (Kling 3.0 video)
 
-All models use:
+All models use the same endpoint pattern:
   POST /api/v1/jobs/createTask  → returns {"data": {"taskId": "..."}}
   GET  /api/v1/playground/recordInfo?taskId={id}  → poll until complete
 
-Video generation is NOT supported in this script — use call-wavespeed.py
-(Seedance Pro or Veo 3 Fast) for all video needs.
+IMPORTANT: Kling 3.0 model ID is "kling-3.0/video" — the "/video" suffix
+is required. Without it, Kie returns "model not supported."
 
 Usage:
     from call_kie import generate_image, edit_image
@@ -41,6 +42,8 @@ CLI:
     python call-kie.py image --prompt "..." --aspect 16:9 --resolution 2K
     python call-kie.py image --prompt "..." --model nano-banana
     python call-kie.py edit --prompt "..." --image URL --image-size 16:9
+    python call-kie.py video --prompt "..." --start URL --end URL --duration 5
+    python call-kie.py video --prompt "..." --start URL --duration 8 --mode standard
 """
 
 from __future__ import annotations
@@ -312,21 +315,95 @@ def edit_image(
 
 
 # --------------------------------------------------------------------------
-# Video — NOT supported, use call-wavespeed.py
+# Video generation — Kling 3.0 on Kie.ai
 # --------------------------------------------------------------------------
 
-def generate_video(*args, **kwargs):
-    """Use call-wavespeed.py video subcommand instead.
+# Verified April 2026 against https://docs.kie.ai/market/kling/kling-3-0
+# Model ID is "kling-3.0/video" — NOT "kling3", "kling-3", or "kling-3.0"
+# (all of those return "model not supported"). The "/video" suffix is required.
+VIDEO_MODELS = {
+    "kling-3.0": {
+        "model_id": "kling-3.0/video",
+        "label": "Kling 3.0 (image-to-video, supports start+end frames)",
+        "docs": "https://docs.kie.ai/market/kling/kling-3-0",
+        "supports_end_frame": True,
+        "duration_range": "1-12 seconds (as string)",
+    },
+}
 
-    Kie.ai video model IDs are not verified on the current API. Wavespeed
-    has confirmed-working Seedance Pro and Veo 3 Fast paths.
+
+def generate_video(
+    prompt: str,
+    start_image_url: str,
+    end_image_url: str | None = None,
+    duration: int = 5,
+    aspect_ratio: str = "16:9",
+    mode: str = "pro",
+    sound: bool = False,
+    model: str = "kling-3.0",
+) -> str:
+    """Generate a video via Kling 3.0 on Kie.ai. Returns the output video URL.
+
+    Docs: https://docs.kie.ai/market/kling/kling-3-0
+
+    Start frame is required (image_urls[0]). End frame is optional
+    (image_urls[1]) — if provided, Kling interpolates between start and
+    end, which is ideal for scroll-bound hero transitions.
+
+    Duration is passed as a string (e.g., "5"). Range: 1-12 seconds.
+    Mode: "pro" (higher resolution, slower) or "standard" (faster, cheaper).
+    Sound: set True for ambient sound effects (off by default for hero videos).
+
+    Aspect ratio auto-adapts from input images if omitted, but explicit
+    "16:9" is recommended for hero videos.
     """
-    raise NotImplementedError(
-        "Video generation is not supported in call-kie.py.\n"
-        "Use call-wavespeed.py instead:\n"
-        "  python scripts/call-wavespeed.py video --model seedance-pro "
-        "--start URL --end URL --prompt '...' --duration 5\n"
+    if model not in VIDEO_MODELS:
+        raise ValueError(f"Unknown video model '{model}'. Valid: {', '.join(VIDEO_MODELS.keys())}")
+
+    info = VIDEO_MODELS[model]
+
+    # Build image_urls array: [start_frame, optional_end_frame]
+    image_urls = [start_image_url]
+    if end_image_url and info["supports_end_frame"]:
+        image_urls.append(end_image_url)
+
+    input_body: dict = {
+        "prompt": prompt,
+        "image_urls": image_urls,
+        "duration": str(duration),  # Kie expects duration as a string
+        "aspect_ratio": aspect_ratio,
+        "mode": mode,
+        "sound": sound,
+        "multi_shots": False,
+    }
+
+    body = {
+        "model": info["model_id"],
+        "input": input_body,
+    }
+
+    resp = _post("/jobs/createTask", body)
+    task_id = (resp.get("data") or {}).get("taskId")
+    if not task_id:
+        raise RuntimeError(f"Kie.ai did not return a taskId: {json.dumps(resp, indent=2)}")
+
+    # Kling videos take 2-8 minutes depending on duration and mode
+    result = _poll(task_id, interval=15, max_wait=1800)
+
+    # Extract video URL from result
+    urls = (
+        result.get("output")
+        or result.get("video_url")
+        or result.get("outputUrls")
+        or result.get("urls")
+        or []
     )
+    if isinstance(urls, str):
+        return urls
+    if isinstance(urls, list) and urls:
+        u = urls[0]
+        return u if isinstance(u, str) else u.get("url", "")
+    raise RuntimeError(f"No video URL in Kling result: {json.dumps(result, indent=2)}")
 
 
 # --------------------------------------------------------------------------
@@ -369,6 +446,17 @@ def _cli() -> None:
     ed.add_argument("--format", default="png", choices=["png", "jpeg"])
     ed.add_argument("--out", default=".")
 
+    # Video generation
+    vid = sub.add_parser("video", help="Generate video via Kling 3.0 (image-to-video)")
+    vid.add_argument("--prompt", required=True)
+    vid.add_argument("--start", required=True, help="Start frame image URL")
+    vid.add_argument("--end", default=None, help="End frame image URL (optional — enables start→end interpolation)")
+    vid.add_argument("--duration", type=int, default=5, help="Duration in seconds (1-12)")
+    vid.add_argument("--aspect", default="16:9")
+    vid.add_argument("--mode", default="pro", choices=["pro", "standard"])
+    vid.add_argument("--sound", action="store_true", help="Enable ambient sound effects")
+    vid.add_argument("--out", default=".")
+
     args = parser.parse_args()
 
     if args.cmd == "image":
@@ -400,6 +488,21 @@ def _cli() -> None:
             dest = Path(args.out) / f"edit-{i+1}.{args.format}"
             download(url, dest)
             print(f"Downloaded: {dest}")
+
+    elif args.cmd == "video":
+        url = generate_video(
+            prompt=args.prompt,
+            start_image_url=args.start,
+            end_image_url=args.end,
+            duration=args.duration,
+            aspect_ratio=args.aspect,
+            mode=args.mode,
+            sound=args.sound,
+        )
+        print(f"URL: {url}")
+        dest = Path(args.out) / "hero.mp4"
+        download(url, dest)
+        print(f"Downloaded: {dest}")
 
 
 if __name__ == "__main__":
