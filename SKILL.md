@@ -197,11 +197,6 @@ If `agent-browser` is not installed, ask:
 > agent-browser (Vercel Labs) is not installed. It's used in Phase 6.5 for automated visual verification — desktop/mobile screenshots, accessibility tree checks, and a self-correcting fix loop.
 > Install? `npm install -g agent-browser && agent-browser install` [Y/n]
 
-**Slot 4 — Image tool (conditional):**
-If `GEMINI_API_KEY` is set and `cc-nano-banana` is not installed, mention it as optional:
-> You have a Gemini key set. cc-nano-banana lets you generate images directly inside Claude Code via Gemini CLI. The pipeline's own scripts (call-wavespeed.py, call-kie.py) already handle image generation, so this is optional — it's a convenience, not a requirement.
-> Install? `git clone https://github.com/kkoppenhaver/cc-nano-banana ~/.claude/skills/nano-banana/` [Y/n / Skip]
-
 **Step 3 — Run confirmed installs one at a time.** After each install, verify it succeeded (check the skills directory for the new folder) before moving to the next. If an install fails, tell the user the error and offer to skip that skill — don't block the pipeline.
 
 **Skills NOT to auto-install (mention as "manual install" only if the user asks):**
