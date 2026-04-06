@@ -13,14 +13,15 @@
             "required_for": "all_tiers"
         },
         {
-            "name": "anthropic-frontend-design",
+            "name": "frontend-design",
             "creator": "Anthropic",
-            "install": "built-in to Claude Code",
-            "what_it_does": "Official Anthropic front-end design skill. Base skill that many creators modify. Polished web designs avoiding common cliches.",
+            "repo": "https://github.com/anthropics/skills/tree/main/skills/frontend-design",
+            "install_project_scope": "git clone https://github.com/anthropics/skills.git /tmp/anthropic-skills && cp -r /tmp/anthropic-skills/skills/frontend-design .claude/skills/frontend-design && rm -rf /tmp/anthropic-skills",
+            "what_it_does": "Official Anthropic frontend design skill from their skills monorepo. Polished web designs avoiding common cliches.",
             "in_default_stack": false,
             "is_aesthetic_opinion": true,
             "role": "aesthetic_opinion_candidate",
-            "note": "One of the three aesthetic-opinion candidates. Pick ONE per project: this, mager, or UIUX Pro Max. Never stack with another aesthetic-opinion skill.",
+            "note": "One of the three aesthetic-opinion candidates. Pick ONE per project: this, mager, or UIUX Pro Max. Not built-in — lives in the anthropics/skills GitHub repo and must be cloned into .claude/skills/frontend-design.",
             "required_for": "all_tiers"
         },
         {

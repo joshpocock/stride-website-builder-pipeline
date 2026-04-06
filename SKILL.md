@@ -188,9 +188,9 @@ If `taste-skill` is not in the installed list, ask explicitly:
 
 **Slot 2 — Aesthetic opinion (pick ONE based on vibe):**
 Check if any of these are already installed: `frontend-design`, `mager/frontend-design`, `uiux-pro-max`. If one is present, confirm it's the right pick for this project's vibe. If none are present, recommend one based on vibe and ask:
-- Trustworthy / service / local business → recommend `front-end design` (Anthropic) or `UIUX Pro Max`
-- Dark neon / SaaS / brutalist / minimalist → recommend `mager/frontend-design`
-- Animated product landing → recommend `front-end design` (Anthropic, modified)
+- Trustworthy / service / local business → recommend Anthropic `frontend-design` (`git clone` from `https://github.com/anthropics/skills` → copy `skills/frontend-design` into `.claude/skills/frontend-design`) or `UIUX Pro Max`
+- Dark neon / SaaS / brutalist / minimalist → recommend `mager/frontend-design` (`git clone https://github.com/mager/frontend-design .claude/skills/frontend-design`)
+- Animated product landing → recommend Anthropic `frontend-design`
 
 Don't stack multiple aesthetic-opinion skills — they give contradictory signals about type hierarchy and the output gets muddy. One per project.
 
