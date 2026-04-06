@@ -46,6 +46,18 @@ Dark mode by default unless brand colors dictate otherwise. Avoid pure black.
 - Use staggered reveal animations on scroll
 - Use skeletal loaders, not spinners
 
+### Layout Reinvention (Rebuild mode)
+
+When the user chose Rebuild mode, preserving copy is not the same as
+preserving layouts. Before writing any component, check: "Is this layout
+structurally different from what existed?" If before/after screenshots
+would look the same at arm's length, pick a different layout. Even in
+minimal builds, use asymmetric layouts over equal-width card grids,
+display-scale numbers instead of inline stats, and one featured element
+at 2x scale per section instead of uniform repetition. See the layout
+alternatives table in `site-build-premium.md` for specific per-section
+suggestions — they work just as well in a minimal stack.
+
 ## Assets
 
 If `assets/hero.mp4` exists, use it for the hero scroll animation.

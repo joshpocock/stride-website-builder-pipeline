@@ -72,6 +72,44 @@ Reference the taste-skill's {{vibe}} archetype. Key rules:
   only, asymmetric or Bento grid layouts, loading/empty/error states for
   every interactive element
 
+### Layout Reinvention Rule (REBUILD mode critical)
+
+When `{{project_mode}} = existing` and the user chose Rebuild mode, this
+is the single most important thing to get right: **preserving copy is NOT
+the same as preserving layouts.** A "visual refresh" that keeps the same
+section skeletons with nicer CSS is a polish pass, not a rebuild — and the
+user will experience it as "looks exactly the same."
+
+**Pre-write self-check for every component:** Before writing any component
+file, ask yourself: "Is this layout structurally different from what
+existed, or am I just restyling the old skeleton?" If a stranger comparing
+before-and-after screenshots would squint to find differences, start over
+with a different layout approach.
+
+**Layout alternatives menu — use these instead of the common defaults:**
+
+| Section | Instead of this (generic) | Do this (premium/distinctive) |
+|---|---|---|
+| 3-step process / How It Works | 3-column icon card grid | Vertical timeline with massive step numbers (8rem), alternating-side rows, or horizontal scroll-snap on mobile |
+| 3 value props | Equal 3-column cards | Asymmetric bento with one hero card (2/3 width) + two stacked support cards (1/3), or 12-col grid with 7/5 split |
+| Testimonials | Equal 3-column review cards | One massive featured quote (full-width, display-scale type) + 2-3 supporting quotes orbiting below at smaller scale |
+| FAQ | Standard accordion | Numbered editorial list with inline answers visible, or two-column Q-left A-right layout, or progressive disclosure with search |
+| Comparison / Why Us | 3-column HTML table | Visual versus layout (side-by-side stacked columns with icons), or animated toggle between options |
+| Final CTA | Gradient background block | Full-bleed cinematic image background with text overlay, or split-screen (image left, CTA right), or floating card over section transition |
+| Stats / Social Proof | Inline number row | Massive counter typography (10rem numbers) with small labels, staggered fade-in on scroll |
+| Pricing | Equal-width tier columns | Asymmetric — spotlight the recommended tier at 1.5x scale, slide others back |
+
+**Typography push for premium builds:**
+- Display-scale headlines at 4rem minimum, 6rem–10rem for hero and section
+  headers. Tight tracking (-0.03em to -0.06em). Line height 0.9–1.1 for
+  display sizes.
+- Editorial two-column body layouts for long-form sections (About, How It
+  Works narrative).
+- Massive pull-quotes for testimonials — 3rem minimum, serif or display font,
+  max-width 65ch.
+- Numbers rendered at display scale (e.g., "500+" at 6rem) with a small
+  label underneath ("installations completed") — never inline.
+
 ## Assets
 
 All assets are in `./assets/`:
