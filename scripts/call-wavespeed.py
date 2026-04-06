@@ -35,7 +35,20 @@ Usage:
 CLI:
     python call-wavespeed.py image --model gemini-3-pro --prompt "..." --n 4
     python call-wavespeed.py edit --image URL --prompt "..."
-    python call-wavespeed.py lock-pair --start URL --end URL --prompt "..."
+    python call-wavespeed.py video --model seedance-pro --start URL --end URL --prompt "..." --duration 5
+    python call-wavespeed.py video --model veo3-fast --start URL --prompt "..." --duration 8
+
+NOTE on Gemini 3 Pro Image variant count (2026-04):
+    Gemini 3 Pro returns exactly 1 image per call regardless of --n. For N
+    variants, issue N separate calls with different --seed values. Other
+    models (Nano Banana Pro, Gemini 2.5 Flash) do support true --n batching.
+
+NOTE on lock-pair (2026-04):
+    The lock-pair subcommand has been removed because the nano-banana-pro/
+    edit-multi parameter schema drifted and the function returns HTTP 400.
+    The lock_pair() Python function is still present but raises
+    NotImplementedError. Skip lock-pair until the correct body shape is
+    re-verified against Wavespeed docs.
 """
 
 from __future__ import annotations
@@ -53,7 +66,7 @@ from pathlib import Path
 BASE_URL = "https://api.wavespeed.ai/api/v3"
 
 
-# Model shortcuts — maps friendly names to full endpoint paths
+# Image model shortcuts — maps friendly names to full endpoint paths
 MODELS = {
     "gemini-3-pro": "google/gemini-3-pro-image/text-to-image",
     "gemini-3-pro-edit": "google/gemini-3-pro-image/edit",
@@ -63,6 +76,48 @@ MODELS = {
     "nano-banana-pro-ultra": "google/nano-banana-pro/text-to-image-ultra",
     "nano-banana": "google/gemini-2.5-flash-image/text-to-image",
     "nano-banana-edit": "google/gemini-2.5-flash-image/edit",
+}
+
+
+# Video model registry — each verified against Wavespeed during a 2026-04
+# production run unless otherwise noted. Path is passed straight through
+# to the Wavespeed POST endpoint under BASE_URL. end_param is the body
+# key name the model expects for the end frame (differs between providers).
+# duration_options is None if the model accepts arbitrary durations, else
+# the tuple of valid values — callers outside the tuple get 400 errors.
+VIDEO_MODELS = {
+    "seedance-pro": {
+        "path": "bytedance/seedance-v1-pro-i2v-480p",
+        "label": "Seedance v1 Pro (image-to-video, 480p)",
+        "supports_end_frame": True,
+        "end_param": "last_image",  # Seedance uses "last_image", not "end_image"
+        "duration_options": None,
+        "cost_tier": "cheap",
+        "verified": True,
+    },
+    "seedance-lite": {
+        "path": "bytedance/seedance-v1-lite-i2v-480p",
+        "label": "Seedance v1 Lite (image-to-video, 480p)",
+        "supports_end_frame": True,
+        "end_param": "last_image",
+        "duration_options": None,
+        "cost_tier": "cheap",
+        "verified": True,  # model exists; production user hit insufficient-credits
+    },
+    "veo3-fast": {
+        "path": "google/veo3-fast/image-to-video",
+        "label": "Veo 3 Fast (image-to-video)",
+        "supports_end_frame": False,  # Veo 3 i2v is single-frame input
+        "end_param": None,
+        "duration_options": (4, 6, 8),  # only 4, 6, or 8 seconds — verified
+        "cost_tier": "mid",
+        "verified": True,
+    },
+    # NOTE: kling on Wavespeed is NOT verified — production probes against
+    # kwaivgi/kling-v2-1-master/image-to-video and kwaivgi/kling-v2-master/
+    # image-to-video both returned 400 "model not found". Kling is currently
+    # Kie-only, but Kie's video path is broken too (see call-kie.py). If you
+    # find a working Wavespeed Kling path, add it here.
 }
 
 
@@ -138,12 +193,16 @@ def _poll(task_id_or_url: str, max_wait: int = 600) -> dict:
 
 
 def _resolve_model(model: str) -> str:
-    """Accept either a shortcut key ('gemini-3-pro') or a full path ('google/gemini-3-pro-image/text-to-image')."""
+    """Accept either a shortcut key ('gemini-3-pro', 'seedance-pro') or a full path.
+    Checks both the image MODELS dict and the VIDEO_MODELS registry."""
     if "/" in model:
         return model
     if model in MODELS:
         return MODELS[model]
-    raise ValueError(f"Unknown model '{model}'. Valid shortcuts: {', '.join(MODELS.keys())}")
+    if model in VIDEO_MODELS:
+        return VIDEO_MODELS[model]["path"]
+    valid = list(MODELS.keys()) + list(VIDEO_MODELS.keys())
+    raise ValueError(f"Unknown model '{model}'. Valid shortcuts: {', '.join(valid)}")
 
 
 def generate_image(
@@ -213,28 +272,91 @@ def edit_image(
     return result.get("outputs", [])
 
 
-def lock_pair(
-    start_url: str,
-    end_url: str,
+def lock_pair(*args, **kwargs) -> list[str]:
+    """BROKEN as of 2026-04. The nano-banana-pro/edit-multi endpoint returns
+    HTTP 400 with the previous body shape ({"prompt", "images": [...],
+    "aspect_ratio", "num_images": 2}). The model exists but the parameter
+    schema drifted — probable fixes include renaming `images` to
+    `image_urls` or to individual `image_1`/`image_2` fields, dropping
+    `aspect_ratio` (possibly inferred from inputs), or dropping
+    `num_images: 2`. None have been verified.
+
+    Until the correct body shape is confirmed against live Wavespeed docs,
+    this function raises to prevent silently broken pipeline runs.
+    Downstream callers should skip the lock-pair matching step when this
+    raises — it's a quality polish, not a hard requirement."""
+    raise NotImplementedError(
+        "call-wavespeed.py lock_pair() is broken — the nano-banana-pro/"
+        "edit-multi parameter schema drifted and the correct body shape "
+        "has not been reverified against Wavespeed docs.\n"
+        "\n"
+        "Workaround: skip the lock-pair step. Generate start + end frames "
+        "with consistent prompts and seeds via generate_image() and rely "
+        "on the prompt to carry lighting/camera/palette coherence. The "
+        "downstream Kling/Seedance transition will still work — it will "
+        "just be slightly less visually locked between the two frames.\n"
+    )
+
+
+def generate_video(
+    start_image_url: str,
     prompt: str,
+    end_image_url: str | None = None,
+    duration_seconds: int = 5,
     aspect_ratio: str = "16:9",
-) -> list[str]:
-    """Lock-pair matching pass: feed both frames into Nano Banana Pro Edit Multi,
-    ask it to match lighting, color, and camera across the pair. Returns two
-    output URLs (start and end), color-matched."""
-    path = _resolve_model("nano-banana-pro-edit-multi")
-    body = {
+    model: str = "seedance-pro",
+) -> str:
+    """Generate an image-to-video clip via Wavespeed. Returns the output URL.
+
+    Default model is Seedance v1 Pro (bytedance/seedance-v1-pro-i2v-480p),
+    verified working in April 2026. Supports start+end frame interpolation
+    (pass end_image_url for scroll-bound hero transitions). Veo 3 Fast is
+    the other verified path but only accepts single-frame input and requires
+    duration in (4, 6, 8).
+
+    See VIDEO_MODELS for the full registry and per-model parameter quirks.
+    """
+    if model not in VIDEO_MODELS:
+        raise ValueError(
+            f"Unknown video model '{model}'. Valid options: "
+            f"{', '.join(VIDEO_MODELS.keys())}"
+        )
+    info = VIDEO_MODELS[model]
+    path = info["path"]
+
+    # Duration validation — Veo 3 only accepts specific values, Seedance is open
+    if info["duration_options"] is not None:
+        if duration_seconds not in info["duration_options"]:
+            raise ValueError(
+                f"{info['label']} requires duration in "
+                f"{info['duration_options']}, got {duration_seconds}"
+            )
+
+    body: dict = {
         "prompt": prompt,
-        "images": [start_url, end_url],
+        "image": start_image_url,
         "aspect_ratio": aspect_ratio,
-        "num_images": 2,
+        "duration": duration_seconds,
     }
+
+    # End-frame support varies: Seedance uses "last_image", Veo has no end frame
+    if info["supports_end_frame"] and end_image_url:
+        body[info["end_param"]] = end_image_url
+
     resp = _post(path, body)
     data = resp.get("data", {})
+
+    # If sync response, output is directly present
+    if data.get("outputs"):
+        outputs = data["outputs"]
+        return outputs[0] if outputs else ""
+
+    # Otherwise poll
     task_id = data.get("id")
     result_url = (data.get("urls") or {}).get("get")
-    result = _poll(result_url or task_id)
-    return result.get("outputs", [])
+    result = _poll(result_url or task_id, max_wait=1800)
+    outputs = result.get("outputs", [])
+    return outputs[0] if outputs else ""
 
 
 def download(url: str, dest: Path) -> Path:
@@ -246,14 +368,14 @@ def download(url: str, dest: Path) -> Path:
 
 
 def _cli() -> None:
-    parser = argparse.ArgumentParser(description="Wavespeed AI wrapper (Gemini 3 Pro Image + Nano Banana Pro)")
+    parser = argparse.ArgumentParser(description="Wavespeed AI wrapper (Gemini 3 Pro Image + Nano Banana Pro + Seedance/Veo video)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    img = sub.add_parser("image", help="Generate images (default: Gemini 3 Pro Image, 4K)")
+    img = sub.add_parser("image", help="Generate images (default: Gemini 3 Pro Image, 4K). NOTE: Gemini 3 Pro returns exactly 1 variant per call — for N variants, issue N separate calls with different --seed.")
     img.add_argument("--prompt", required=True)
     img.add_argument("--model", default="gemini-3-pro", help=f"Shortcut or full path. Shortcuts: {', '.join(MODELS.keys())}")
     img.add_argument("--aspect", default="16:9")
-    img.add_argument("--n", type=int, default=4)
+    img.add_argument("--n", type=int, default=4, help="num_images param. Ignored by gemini-3-pro (always 1).")
     img.add_argument("--negative", default=None)
     img.add_argument("--seed", type=int, default=None)
     img.add_argument("--sync", action="store_true", help="Enable sync mode (blocks until done)")
@@ -267,12 +389,14 @@ def _cli() -> None:
     ed.add_argument("--n", type=int, default=1)
     ed.add_argument("--out", default=".")
 
-    lp = sub.add_parser("lock-pair", help="Match lighting/color/camera across a start+end frame pair")
-    lp.add_argument("--start", required=True, help="Start frame URL")
-    lp.add_argument("--end", required=True, help="End frame URL")
-    lp.add_argument("--prompt", required=True)
-    lp.add_argument("--aspect", default="16:9")
-    lp.add_argument("--out", default=".")
+    vid = sub.add_parser("video", help="Generate image-to-video clip (Seedance Pro by default, also supports Veo 3 Fast)")
+    vid.add_argument("--start", required=True, help="Start frame URL")
+    vid.add_argument("--end", default=None, help="End frame URL (Seedance only — Veo doesn't do end-frame i2v)")
+    vid.add_argument("--prompt", required=True)
+    vid.add_argument("--model", default="seedance-pro", choices=list(VIDEO_MODELS.keys()))
+    vid.add_argument("--duration", type=int, default=5, help="Duration in seconds. Veo 3 Fast only accepts 4, 6, or 8.")
+    vid.add_argument("--aspect", default="16:9")
+    vid.add_argument("--out", default=".")
 
     args = parser.parse_args()
 
@@ -286,6 +410,12 @@ def _cli() -> None:
             seed=args.seed,
             enable_sync_mode=args.sync,
         )
+        # Print URLs FIRST so downstream pipeline steps can capture them
+        # even if downloads fail. Print both the source URL and the local
+        # path — downstream callers need the URL for chaining (video gen,
+        # lock-pair, etc.), and the local path for local operations.
+        for i, url in enumerate(urls):
+            print(f"URL: {url}")
         for i, url in enumerate(urls):
             dest = Path(args.out) / f"image-{i+1}.webp"
             download(url, dest)
@@ -300,22 +430,25 @@ def _cli() -> None:
             num_images=args.n,
         )
         for i, url in enumerate(urls):
+            print(f"URL: {url}")
+        for i, url in enumerate(urls):
             dest = Path(args.out) / f"edit-{i+1}.webp"
             download(url, dest)
             print(f"Downloaded: {dest}")
 
-    elif args.cmd == "lock-pair":
-        urls = lock_pair(
-            start_url=args.start,
-            end_url=args.end,
+    elif args.cmd == "video":
+        url = generate_video(
+            start_image_url=args.start,
             prompt=args.prompt,
+            end_image_url=args.end,
+            duration_seconds=args.duration,
             aspect_ratio=args.aspect,
+            model=args.model,
         )
-        for i, url in enumerate(urls):
-            label = "start" if i == 0 else "end"
-            dest = Path(args.out) / f"locked-{label}.webp"
-            download(url, dest)
-            print(f"Downloaded: {dest}")
+        print(f"URL: {url}")
+        dest = Path(args.out) / "hero.mp4"
+        download(url, dest)
+        print(f"Downloaded: {dest}")
 
 
 if __name__ == "__main__":
