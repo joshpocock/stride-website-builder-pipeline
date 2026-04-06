@@ -173,36 +173,42 @@ Four possible paths based on Q2. `brand.json` is the single output format regard
 
 ## Phase 3: Skill Installation
 
-Based on Q13 integrations + vibe archetype, determine which peer skills to install. See `references/recommended-skills.json`.
+**Do not skip this phase.** Even if the user didn't mention skills, check what's installed and ask about anything missing. This phase runs every time — it's not gated on a survey question.
 
-**The stacking rule: one skill per job, cap at three.** Each peer skill belongs to one of three functional slots:
+**Step 1 — Scan what's already installed.** List the contents of `~/.claude/skills/` and `<project>/.claude/skills/`. Note which of the three slot skills are present.
 
-1. **Rules + dials slot** — always `taste-skill`. Not an aesthetic opinion; it bans generic AI patterns and enforces premium ones via three tunable dials (DESIGN_VARIANCE, MOTION_INTENSITY, VISUAL_DENSITY).
-2. **Aesthetic opinion slot** — pick exactly ONE based on the vibe archetype from Q11:
-   - `mager/frontend-design` → dark neon SaaS, brutalist, minimalist
-   - Anthropic official `front-end design` (modified) → polished animated product landing pages
-   - `UIUX Pro Max` (nextlevelbuilder) → industry-specific UX refinement (medical, legal, fintech)
-3. **Image generation tool slot** — `cc-nano-banana` if `GEMINI_API_KEY` is set, otherwise skip (pipeline still works; image gen happens via `call-kie.py` or `call-wavespeed.py`).
+**Step 2 — Check each slot and ask via `AskUserQuestion` for any missing critical skill.** See `references/recommended-skills.json` for install commands and details.
 
-**Don't stack multiple aesthetic-opinion skills.** Installing mager + front-end design + UIUX Pro Max together gives Claude contradictory signals about type hierarchy, grid style, and motion intensity, and the output gets muddy — each skill has strong opinions and they fight each other. The "10 skills not just taste" video narrative is about having the menu to swap between projects, not about stacking them in one build. Pick one aesthetic skill per project based on the vibe archetype.
+**Slot 1 — Rules + dials (always `taste-skill`):**
+If `taste-skill` is not in the installed list, ask explicitly:
+> taste-skill is not installed. It's the anti-slop ruleset that prevents generic AI patterns and gives you 3 tunable dials (DESIGN_VARIANCE, MOTION_INTENSITY, VISUAL_DENSITY). Every build is better with it.
+> Install? `npx skills add https://github.com/Leonxlnx/taste-skill` [Y/n]
 
-**Always install (utility, non-opinion):**
-- `agent-browser` (Vercel Labs) — critical for Phase 6.5 verification loop
+**Slot 2 — Aesthetic opinion (pick ONE based on vibe):**
+Check if any of these are already installed: `frontend-design`, `mager/frontend-design`, `uiux-pro-max`. If one is present, confirm it's the right pick for this project's vibe. If none are present, recommend one based on vibe and ask:
+- Trustworthy / service / local business → recommend `front-end design` (Anthropic) or `UIUX Pro Max`
+- Dark neon / SaaS / brutalist / minimalist → recommend `mager/frontend-design`
+- Animated product landing → recommend `front-end design` (Anthropic, modified)
 
-**Optional opt-in (user must explicitly confirm):**
-- Owl-Listener `designer-skills` bundle — only if the project needs research/strategy/design-ops depth beyond taste-skill; don't co-install with another aesthetic-opinion skill (same contradictory-signals problem as above)
-- `TypeUI.sh` themes — design-file downloads, not a skill in the traditional sense
-- `AccessLint` — WCAG compliance, safe to co-install (utility, not opinion), required if SEO tier is "Full Audit"
-- `paper-design-mcp` — only if user is actively designing in Paper
+Don't stack multiple aesthetic-opinion skills — they give contradictory signals about type hierarchy and the output gets muddy. One per project.
 
-**Skool-gated skills** (Nate Herk Video-to-Website, Jack Roberts 3D Builder) — flag as "manual install" with a link. Do not attempt automated install.
+**Slot 3 — Utility:**
+If `agent-browser` is not installed, ask:
+> agent-browser (Vercel Labs) is not installed. It's used in Phase 6.5 for automated visual verification — desktop/mobile screenshots, accessibility tree checks, and a self-correcting fix loop.
+> Install? `npm install -g agent-browser && agent-browser install` [Y/n]
 
-**Process:**
-1. Check what's already installed (`.claude/skills/` in user home + project)
-2. For each skill in the three slots above, if missing, show the exact install command to the user
-3. Ask the user to confirm each install individually
-4. Run the confirmed installs one at a time, verify each succeeded before moving on
-5. Run installs one at a time with a confirmation before each. Batching them loses the ability to catch a wrong install and reason about it before the next one runs, and silent auto-execution is the same trust problem as in Phase 0.
+**Slot 4 — Image tool (conditional):**
+If `GEMINI_API_KEY` is set and `cc-nano-banana` is not installed, mention it as optional:
+> You have a Gemini key set. cc-nano-banana lets you generate images directly inside Claude Code via Gemini CLI. The pipeline's own scripts (call-wavespeed.py, call-kie.py) already handle image generation, so this is optional — it's a convenience, not a requirement.
+> Install? `git clone https://github.com/kkoppenhaver/cc-nano-banana ~/.claude/skills/nano-banana/` [Y/n / Skip]
+
+**Step 3 — Run confirmed installs one at a time.** After each install, verify it succeeded (check the skills directory for the new folder) before moving to the next. If an install fails, tell the user the error and offer to skip that skill — don't block the pipeline.
+
+**Skills NOT to auto-install (mention as "manual install" only if the user asks):**
+- Skool-gated skills (Nate Herk Video-to-Website, Jack Roberts 3D Builder) — community-only, require manual download
+- Owl-Listener `designer-skills` bundle — heavy (63 skills), only if the user specifically wants research/strategy/design-ops depth
+- `TypeUI.sh` themes — design-file downloads from typeui.sh, not a git-installable skill
+- `AccessLint` — WCAG compliance, safe to co-install, mention only if SEO tier = "Full Audit"
 
 ---
 
