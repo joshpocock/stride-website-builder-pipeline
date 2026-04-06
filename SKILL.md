@@ -175,14 +175,16 @@ Four possible paths based on Q2. `brand.json` is the single output format regard
 
 **Do not skip this phase.** Even if the user didn't mention skills, check what's installed and ask about anything missing. This phase runs every time — it's not gated on a survey question.
 
-**Step 1 — Scan what's already installed.** List the contents of `~/.claude/skills/` and `<project>/.claude/skills/`. Note which of the three slot skills are present.
+**Installation scope: project-only.** All skill installs go into the current project's `.claude/skills/` or `.agents/skills/` directory — never into the user-scope `~/.claude/skills/`. The pipeline should not pollute other projects with skills that are only relevant to this build. If a skill is already installed at user scope, that's fine (it'll be detected in the scan), but new installs always target project scope.
+
+**Step 1 — Scan what's already installed.** List the contents of `~/.claude/skills/`, `<project>/.claude/skills/`, and `<project>/.agents/skills/`. Note which of the slot skills are present in any of these locations.
 
 **Step 2 — Check each slot and ask via `AskUserQuestion` for any missing critical skill.** See `references/recommended-skills.json` for install commands and details.
 
 **Slot 1 — Rules + dials (always `taste-skill`):**
 If `taste-skill` is not in the installed list, ask explicitly:
 > taste-skill is not installed. It's the anti-slop ruleset that prevents generic AI patterns and gives you 3 tunable dials (DESIGN_VARIANCE, MOTION_INTENSITY, VISUAL_DENSITY). Every build is better with it.
-> Install? `npx skills add https://github.com/Leonxlnx/taste-skill` [Y/n]
+> Install into this project? `git clone https://github.com/Leonxlnx/taste-skill .claude/skills/taste-skill` [Y/n]
 
 **Slot 2 — Aesthetic opinion (pick ONE based on vibe):**
 Check if any of these are already installed: `frontend-design`, `mager/frontend-design`, `uiux-pro-max`. If one is present, confirm it's the right pick for this project's vibe. If none are present, recommend one based on vibe and ask:
@@ -195,7 +197,7 @@ Don't stack multiple aesthetic-opinion skills — they give contradictory signal
 **Slot 3 — Utility:**
 If `agent-browser` is not installed, ask:
 > agent-browser (Vercel Labs) is not installed. It's used in Phase 6.5 for automated visual verification — desktop/mobile screenshots, accessibility tree checks, and a self-correcting fix loop.
-> Install? `npm install -g agent-browser && agent-browser install` [Y/n]
+> Install into this project? `git clone https://github.com/vercel-labs/agent-browser .claude/skills/agent-browser` [Y/n]
 
 **Step 3 — Run confirmed installs one at a time.** After each install, verify it succeeded (check the skills directory for the new folder) before moving to the next. If an install fails, tell the user the error and offer to skip that skill — don't block the pipeline.
 
