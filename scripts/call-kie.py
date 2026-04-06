@@ -12,12 +12,21 @@ Kie.ai API wrapper — PARTIALLY BROKEN as of 2026-04 production run.
     - Key auth: Bearer token in Authorization header
 
     BROKEN OR UNVERIFIED:
-    - /images/generations path (not tested against new API)
+    - /images/generations path (not tested against new API — likely dead
+      like /videos/generations. Kie moved to /playground/createTask)
     - /videos/generations path (confirmed dead — returns 404)
     - /tasks/{id} polling path (confirmed dead — returns 404)
     - kling3, veo3-*, veo3.1-* model ID strings (none matched in probes)
     - Kie's current pattern is /playground/createTask with model in body,
       not path-based routing — full rewrite needed
+
+    IMAGE GEN REFERENCE:
+    - Nano Banana Pro (default): https://kie.ai/nano-banana-pro
+    - Nano Banana 2 (cheaper):   https://kie.ai/nano-banana-2
+    - The generate_image() function below tries /images/generations which
+      is the OLD path. If it fails, the likely fix is switching to
+      /playground/createTask with the correct model ID. Check the Kie.ai
+      API docs at the time you read this.
 
     For video generation, use call-wavespeed.py's `video` subcommand —
     it has verified-working Seedance and Veo 3 Fast paths.
@@ -184,20 +193,49 @@ def generate_image(
     size: str = "high",
     n: int = 4,
     reference_images: list[str] | None = None,
-    model: str = "nanoBanana2",
+    model: str = "nanoBananaPro",
 ) -> list[str]:
-    """Generate N image variants and return a list of URLs."""
+    """Generate N image variants via Kie.ai. Returns list of output URLs.
+
+    Default model is Nano Banana Pro (https://kie.ai/nano-banana-pro).
+    Alternative: 'nanoBanana2' (https://kie.ai/nano-banana-2) — cheaper.
+
+    WARNING (April 2026): This function uses the OLD /images/generations
+    endpoint which may be dead on the current Kie API (Kie moved to a
+    /playground/createTask pattern). If this returns 404 or model-not-found,
+    the endpoint and possibly model ID strings need updating. Use
+    call-wavespeed.py as a fallback until this is verified.
+    """
     body = {
         "model": model,
         "prompt": prompt,
         "aspect_ratio": aspect_ratio,
-        "size": size,  # NOT "quality" — memory note
+        "size": size,  # NOT "quality" — breaks the request on Kie
         "n": n,
     }
     if reference_images:
         body["reference_images"] = reference_images
 
-    result = _post("/images/generations", body)
+    # Try the old path first. If Kie rewrote this too, the likely
+    # replacement is /playground/createTask with model in the body.
+    try:
+        result = _post("/images/generations", body)
+    except urllib.error.HTTPError as e:
+        if e.code in (404, 400):
+            # Try the new createTask pattern as fallback
+            try:
+                result = _post("/playground/createTask", body)
+            except Exception:
+                raise RuntimeError(
+                    f"Kie.ai image generation failed on both /images/generations "
+                    f"(HTTP {e.code}) and /playground/createTask. The API surface "
+                    f"likely changed. Use call-wavespeed.py as a fallback.\n"
+                    f"Nano Banana Pro: https://kie.ai/nano-banana-pro\n"
+                    f"Nano Banana 2:   https://kie.ai/nano-banana-2"
+                ) from e
+        else:
+            raise
+
     task_id = result.get("task_id") or result.get("id")
     if task_id:
         result = _poll(task_id)

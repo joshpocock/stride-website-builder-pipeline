@@ -226,11 +226,11 @@ Generate two image prompts from the survey answers (product, vibe, brand colors)
    - Why preferred: newest Gemini family model, genuine 4K native
 
 2. **Else if `KIE_AI_API_KEY` is set → FALLBACK.** Use Nano Banana Pro via `scripts/call-kie.py`:
-   - Model: `nanoBanana2` (or `nanoBananaPro` if the survey picked a premium tier)
+   - Model: `nanoBananaPro` (default — https://kie.ai/nano-banana-pro). Alternative: `nanoBanana2` (cheaper — https://kie.ai/nano-banana-2)
    - Aspect ratio: `16:9`
    - Resolution: 2K
    - Batch: up to 4 variants per call (true batching works here)
-   - **Note:** `call-kie.py` is partially broken as of April 2026 (the Kie.ai API surface changed). Image generation may work with the corrected BASE_URL but is unverified. See the warning block at the top of the file. If it fails, fall back to Wavespeed even for non-preferred paths.
+   - **Note:** `call-kie.py` is partially broken as of April 2026 (the Kie.ai API surface changed). The script tries both the old `/images/generations` endpoint and the new `/playground/createTask` pattern. If both fail, fall back to Wavespeed even for non-preferred paths.
    - Safety rules: do NOT use `quality` param on Kie.ai (breaks the request); use `size` (standard/high), `aspect_ratio`
 
 3. **Else → ERROR.** Tell the user to set one of the two keys in `.env` before rerunning. Do not try to proceed without image generation.
