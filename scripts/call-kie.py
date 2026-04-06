@@ -1,82 +1,46 @@
 #!/usr/bin/env python3
 """
-Kie.ai API wrapper — PARTIALLY BROKEN as of 2026-04 production run.
+Kie.ai API wrapper — Nano Banana Pro + Nano Banana 2 + Nano Banana Edit.
 
-⚠️  STATUS: The Kie.ai API surface changed and the video-generation path
-    in this script is stale. Image generation may still work with the
-    corrected BASE_URL below, but has not been re-verified after the
-    2026 Kie API rewrite.
+Rewritten April 2026 against the current Kie.ai API docs:
+- https://docs.kie.ai/market/google/nanobanana2
+- https://docs.kie.ai/market/google/pro-image-to-image
+- https://docs.kie.ai/market/google/nano-banana-edit
 
-    VERIFIED WORKING:
-    - Credit check endpoint: https://api.kie.ai/api/v1/chat/credit
-    - Key auth: Bearer token in Authorization header
+All models use:
+  POST /api/v1/jobs/createTask  → returns {"data": {"taskId": "..."}}
+  GET  /api/v1/playground/recordInfo?taskId={id}  → poll until complete
 
-    BROKEN OR UNVERIFIED:
-    - /images/generations path (not tested against new API — likely dead
-      like /videos/generations. Kie moved to /playground/createTask)
-    - /videos/generations path (confirmed dead — returns 404)
-    - /tasks/{id} polling path (confirmed dead — returns 404)
-    - kling3, veo3-*, veo3.1-* model ID strings (none matched in probes)
-    - Kie's current pattern is /playground/createTask with model in body,
-      not path-based routing — full rewrite needed
-
-    IMAGE GEN REFERENCE:
-    - Nano Banana Pro (default): https://kie.ai/nano-banana-pro
-    - Nano Banana 2 (cheaper):   https://kie.ai/nano-banana-2
-    - The generate_image() function below tries /images/generations which
-      is the OLD path. If it fails, the likely fix is switching to
-      /playground/createTask with the correct model ID. Check the Kie.ai
-      API docs at the time you read this.
-
-    For video generation, use call-wavespeed.py's `video` subcommand —
-    it has verified-working Seedance and Veo 3 Fast paths.
-
-    When this file is rewritten against the current Kie API docs, remove
-    this warning block and the raise NotImplementedError in generate_video.
-
-
-Known-good params (verified from memory):
-- `size` (standard/high) for quality
-- `aspect_ratio` (portrait/landscape/square/16:9/9:16/1:1)
-- `n_frames` (10/15) is REQUIRED for video generation
-- Do NOT use `quality` param — API rejects it with "size is invalid"
-- High quality 15s portrait video renders take ~12-15 min
-- Result URLs are temporary (tempfile.aiquickdraw.com) — download immediately
-
-Supported video models (pass to generate_video via `model=`):
-- `kling3`        — Kling 3.0 (default, fastest, cheapest, image-to-image)
-- `veo3-fast`     — Veo 3 Fast (mid-tier quality, faster renders)
-- `veo3`          — Veo 3 (high quality, slower)
-- `veo3.1-fast`   — Veo 3.1 Fast (newest, balanced)
-- `veo3.1`        — Veo 3.1 (newest, highest quality)
-NOTE: Exact Kie.ai model identifiers should be cross-referenced against current
-Kie docs — the names above follow Kie's public naming pattern but may need
-tweaking as Kie renames endpoints. The API passes `model` through as a string
-so overriding from the caller is always safe.
+Video generation is NOT supported in this script — use call-wavespeed.py
+(Seedance Pro or Veo 3 Fast) for all video needs.
 
 Usage:
-    from call_kie import generate_image, generate_video
+    from call_kie import generate_image, edit_image
 
-    # Image (NanoBanana 2)
+    # Image generation (Nano Banana Pro — default)
     urls = generate_image(
         prompt="Professional studio-grade image of a blender...",
         aspect_ratio="16:9",
-        size="high",
-        n=4,  # generate 4 variants
+        resolution="2K",
     )
 
-    # Video (Kling 3.0)
-    video_url = generate_video(
-        start_image_url="https://.../start.webp",
-        end_image_url="https://.../end.webp",
-        prompt="The lid lifts off, components separate...",
-        duration_seconds=5,
-        aspect_ratio="16:9",
+    # Image generation (Nano Banana standard — cheaper, no resolution control)
+    urls = generate_image(
+        prompt="...",
+        model="nano-banana",
+    )
+
+    # Image editing (Nano Banana Edit)
+    urls = edit_image(
+        prompt="Change the background to a sunset...",
+        image_urls=["https://example.com/photo.jpg"],
+        image_size="16:9",
     )
 
 CLI:
-    python call-kie.py image --prompt "..." --aspect 16:9 --n 4
-    python call-kie.py video --start URL --end URL --prompt "..." --duration 5
+    python call-kie.py image --prompt "..." --aspect 16:9 --resolution 2K
+    python call-kie.py image --prompt "..." --model nano-banana
+    python call-kie.py edit --prompt "..." --image URL --image-size 16:9
 """
 
 from __future__ import annotations
@@ -86,10 +50,61 @@ import json
 import os
 import sys
 import time
-import urllib.parse
+import urllib.error
 import urllib.request
 from pathlib import Path
 
+
+# --------------------------------------------------------------------------
+# Image model registry
+# --------------------------------------------------------------------------
+
+# Each model has different field names — Kie.ai is inconsistent across models.
+# Field mappings verified against docs April 2026:
+#   Pro:    https://docs.kie.ai/market/google/pro-image-to-image
+#   Normal: https://docs.kie.ai/market/google/nanobanana2
+#   Edit:   https://docs.kie.ai/market/google/nano-banana-edit
+IMAGE_MODELS = {
+    "nano-banana-pro": {
+        "model_id": "nano-banana-pro",
+        "label": "Nano Banana Pro (best quality, default)",
+        "docs": "https://kie.ai/nano-banana-pro",
+        "max_prompt": 10_000,
+        "max_ref_images": 8,
+        "aspect_field": "aspect_ratio",     # Pro uses aspect_ratio
+        "image_field": "image_input",       # Pro uses image_input
+        "has_resolution": True,             # 1K / 2K / 4K
+        "output_formats": ("png", "jpg"),   # Pro uses "jpg" not "jpeg"
+    },
+    "nano-banana": {
+        "model_id": "google/nano-banana",
+        "label": "Nano Banana (standard, cheaper)",
+        "docs": "https://docs.kie.ai/market/google/nanobanana2",
+        "max_prompt": 5_000,
+        "max_ref_images": 0,                # no image_input field
+        "aspect_field": "image_size",       # Normal uses image_size, NOT aspect_ratio!
+        "image_field": None,                # no reference image support
+        "has_resolution": False,            # no resolution field
+        "output_formats": ("png", "jpeg"),  # Normal uses "jpeg" not "jpg"!
+    },
+}
+
+EDIT_MODEL = {
+    "model_id": "google/nano-banana-edit",
+    "label": "Nano Banana Edit",
+    "docs": "https://docs.kie.ai/market/google/nano-banana-edit",
+    "max_prompt": 5_000,
+    "max_images": 10,
+    "aspect_field": "image_size",       # Edit uses image_size like Normal
+    "image_field": "image_urls",        # Edit uses image_urls (required!)
+    "has_resolution": False,
+    "output_formats": ("png", "jpeg"),  # Edit uses "jpeg" like Normal
+}
+
+
+# --------------------------------------------------------------------------
+# Auth
+# --------------------------------------------------------------------------
 
 def _api_key() -> str:
     """Load Kie.ai API key from env, then walk upward for .env files,
@@ -98,8 +113,6 @@ def _api_key() -> str:
     if key:
         return key
 
-    # Walk upward from cwd looking for a .env file with KIE_AI_API_KEY.
-    # Mirrors the logic in call-wavespeed.py for consistency.
     cwd = Path.cwd()
     for ancestor in [cwd, *cwd.parents]:
         env_file = ancestor / ".env"
@@ -109,17 +122,13 @@ def _api_key() -> str:
                 if line.startswith("KIE_AI_API_KEY="):
                     return line.split("=", 1)[1].strip().strip('"').strip("'")
 
-    # Final fallback: read from the kie-ai skill config if present
-    fallback = (
-        Path.home() / ".claude" / "skills" / "kie-ai" / "mcp-config.json"
-    )
+    fallback = Path.home() / ".claude" / "skills" / "kie-ai" / "mcp-config.json"
     if not fallback.exists():
         for ancestor in [cwd, *cwd.parents]:
             candidate = ancestor / ".claude" / "skills" / "kie-ai" / "mcp-config.json"
             if candidate.exists():
                 fallback = candidate
                 break
-
     if fallback.exists():
         data = json.loads(fallback.read_text(encoding="utf-8"))
         try:
@@ -134,24 +143,17 @@ def _api_key() -> str:
     )
 
 
-# Verified 2026-04 against https://api.kie.ai/api/v1/chat/credit
-# Previous value was "https://api.kie.ai/v1" which returns 403 Forbidden.
-BASE_URL = "https://api.kie.ai/api/v1"
+# --------------------------------------------------------------------------
+# HTTP helpers
+# --------------------------------------------------------------------------
 
-# Video model registry — caller picks one, passed straight through to Kie.
-# Verify exact model IDs against Kie.ai docs if a call returns a model-not-found error.
-VIDEO_MODELS = {
-    "kling3": {"label": "Kling 3.0", "supports_end_frame": True, "cost_tier": "cheap"},
-    "veo3-fast": {"label": "Veo 3 Fast", "supports_end_frame": False, "cost_tier": "mid"},
-    "veo3": {"label": "Veo 3", "supports_end_frame": False, "cost_tier": "high"},
-    "veo3.1-fast": {"label": "Veo 3.1 Fast", "supports_end_frame": False, "cost_tier": "mid"},
-    "veo3.1": {"label": "Veo 3.1", "supports_end_frame": False, "cost_tier": "high"},
-}
+BASE_URL = "https://api.kie.ai/api/v1"
 
 
 def _post(path: str, body: dict) -> dict:
+    url = f"{BASE_URL}{path}"
     req = urllib.request.Request(
-        BASE_URL + path,
+        url,
         data=json.dumps(body).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {_api_key()}",
@@ -159,13 +161,13 @@ def _post(path: str, body: dict) -> dict:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=120) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def _get(path: str) -> dict:
+def _get(url: str) -> dict:
     req = urllib.request.Request(
-        BASE_URL + path,
+        url,
         headers={"Authorization": f"Bearer {_api_key()}"},
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
@@ -173,202 +175,231 @@ def _get(path: str) -> dict:
 
 
 def _poll(task_id: str, interval: int = 5, max_wait: int = 900) -> dict:
-    """Poll a Kie.ai task until done. Returns the final result dict."""
+    """Poll GET /playground/recordInfo?taskId={id} until task completes.
+
+    Verified working in April 2026 production run. The old /tasks/{id}
+    endpoint is dead — do not use it.
+    """
+    url = f"{BASE_URL}/playground/recordInfo?taskId={task_id}"
     elapsed = 0
     while elapsed < max_wait:
-        status = _get(f"/tasks/{task_id}")
-        state = status.get("status")
-        if state in ("completed", "succeeded", "success"):
-            return status
-        if state in ("failed", "error"):
-            raise RuntimeError(f"Kie.ai task failed: {status}")
+        resp = _get(url)
+        data = resp.get("data", {})
+        state = data.get("status") or data.get("state", "")
+        state_lower = state.lower() if isinstance(state, str) else ""
+
+        if state_lower in ("completed", "succeeded", "success", "done"):
+            return data
+        if state_lower in ("failed", "error"):
+            raise RuntimeError(f"Kie.ai task failed: {json.dumps(data, indent=2)}")
+
+        # "waiting" or "processing" — keep polling
         time.sleep(interval)
         elapsed += interval
     raise TimeoutError(f"Kie.ai task {task_id} did not complete within {max_wait}s")
 
 
+# --------------------------------------------------------------------------
+# Image generation
+# --------------------------------------------------------------------------
+
 def generate_image(
     prompt: str,
+    model: str = "nano-banana-pro",
     aspect_ratio: str = "16:9",
-    size: str = "high",
-    n: int = 4,
+    resolution: str = "2K",
+    output_format: str = "png",
     reference_images: list[str] | None = None,
-    model: str = "nanoBananaPro",
 ) -> list[str]:
-    """Generate N image variants via Kie.ai. Returns list of output URLs.
+    """Generate image(s) via Kie.ai. Returns list of output URLs.
 
-    Default model is Nano Banana Pro (https://kie.ai/nano-banana-pro).
-    Alternative: 'nanoBanana2' (https://kie.ai/nano-banana-2) — cheaper.
+    Default: Nano Banana Pro (https://kie.ai/nano-banana-pro)
+    Alternative: 'nano-banana-2' (https://kie.ai/nano-banana-2) — cheaper
 
-    WARNING (April 2026): This function uses the OLD /images/generations
-    endpoint which may be dead on the current Kie API (Kie moved to a
-    /playground/createTask pattern). If this returns 404 or model-not-found,
-    the endpoint and possibly model ID strings need updating. Use
-    call-wavespeed.py as a fallback until this is verified.
+    resolution options: '1K', '2K', '4K' (default '2K')
+    aspect_ratio options: '1:1', '16:9', '9:16', '3:2', '2:3', '3:4', '4:3',
+        '4:5', '5:4', '21:9', 'auto'
+    output_format: 'png' or 'jpg'
     """
-    body = {
-        "model": model,
+    if model not in IMAGE_MODELS:
+        raise ValueError(
+            f"Unknown model '{model}'. Valid: {', '.join(IMAGE_MODELS.keys())}. "
+            f"For editing, use edit_image() instead."
+        )
+    info = IMAGE_MODELS[model]
+
+    input_body: dict = {
         "prompt": prompt,
-        "aspect_ratio": aspect_ratio,
-        "size": size,  # NOT "quality" — breaks the request on Kie
-        "n": n,
+        info["aspect_field"]: aspect_ratio,
+        "output_format": output_format,
     }
-    if reference_images:
-        body["reference_images"] = reference_images
+    if info["has_resolution"] and resolution:
+        input_body["resolution"] = resolution
+    if reference_images and info["image_field"]:
+        input_body[info["image_field"]] = reference_images
 
-    # Try the old path first. If Kie rewrote this too, the likely
-    # replacement is /playground/createTask with model in the body.
-    try:
-        result = _post("/images/generations", body)
-    except urllib.error.HTTPError as e:
-        if e.code in (404, 400):
-            # Try the new createTask pattern as fallback
-            try:
-                result = _post("/playground/createTask", body)
-            except Exception:
-                raise RuntimeError(
-                    f"Kie.ai image generation failed on both /images/generations "
-                    f"(HTTP {e.code}) and /playground/createTask. The API surface "
-                    f"likely changed. Use call-wavespeed.py as a fallback.\n"
-                    f"Nano Banana Pro: https://kie.ai/nano-banana-pro\n"
-                    f"Nano Banana 2:   https://kie.ai/nano-banana-2"
-                ) from e
-        else:
-            raise
+    body = {
+        "model": info["model_id"],
+        "input": input_body,
+    }
 
-    task_id = result.get("task_id") or result.get("id")
-    if task_id:
-        result = _poll(task_id)
-    urls = result.get("images") or result.get("output") or []
-    return [img if isinstance(img, str) else img.get("url") for img in urls]
+    resp = _post("/jobs/createTask", body)
+    task_id = (resp.get("data") or {}).get("taskId")
+    if not task_id:
+        raise RuntimeError(f"Kie.ai did not return a taskId: {json.dumps(resp, indent=2)}")
+
+    result = _poll(task_id)
+    # Extract output URLs from the result — Kie uses various field names
+    urls = (
+        result.get("output")
+        or result.get("images")
+        or result.get("outputUrls")
+        or result.get("urls")
+        or []
+    )
+    if isinstance(urls, str):
+        urls = [urls]
+    return [u if isinstance(u, str) else u.get("url", "") for u in urls]
 
 
-def generate_video(*args, **kwargs) -> str:
-    """BROKEN as of 2026-04. Use call-wavespeed.py video subcommand instead.
+# --------------------------------------------------------------------------
+# Image editing
+# --------------------------------------------------------------------------
 
-    Kie.ai moved off the path-based /videos/generations endpoint and no model
-    ID in VIDEO_MODELS below has been verified against the new API surface.
-    A production run in April 2026 confirmed all Kie video model IDs returned
-    "model not found" or "model format is incorrect" on both the old path and
-    the new /playground/createTask pattern. Until this function is rewritten
-    against the current Kie docs, raise a clear error pointing users at the
-    verified-working alternative.
+def edit_image(
+    prompt: str,
+    image_urls: list[str],
+    image_size: str = "16:9",
+    output_format: str = "png",
+) -> list[str]:
+    """Edit image(s) via Nano Banana Edit. Returns list of output URLs.
+
+    Docs: https://docs.kie.ai/market/google/nano-banana-edit
+
+    Note: This model uses different field names than the generation models:
+    - 'image_urls' not 'image_input'
+    - 'image_size' not 'aspect_ratio'
+    - output_format accepts 'png' or 'jpeg' (not 'jpg')
+    """
+    input_body: dict = {
+        "prompt": prompt,
+        "image_urls": image_urls,
+        "image_size": image_size,
+        "output_format": output_format,
+    }
+
+    body = {
+        "model": EDIT_MODEL["model_id"],
+        "input": input_body,
+    }
+
+    resp = _post("/jobs/createTask", body)
+    task_id = (resp.get("data") or {}).get("taskId")
+    if not task_id:
+        raise RuntimeError(f"Kie.ai did not return a taskId: {json.dumps(resp, indent=2)}")
+
+    result = _poll(task_id)
+    urls = (
+        result.get("output")
+        or result.get("images")
+        or result.get("outputUrls")
+        or result.get("urls")
+        or []
+    )
+    if isinstance(urls, str):
+        urls = [urls]
+    return [u if isinstance(u, str) else u.get("url", "") for u in urls]
+
+
+# --------------------------------------------------------------------------
+# Video — NOT supported, use call-wavespeed.py
+# --------------------------------------------------------------------------
+
+def generate_video(*args, **kwargs):
+    """Use call-wavespeed.py video subcommand instead.
+
+    Kie.ai video model IDs are not verified on the current API. Wavespeed
+    has confirmed-working Seedance Pro and Veo 3 Fast paths.
     """
     raise NotImplementedError(
-        "call-kie.py generate_video() is broken — the Kie.ai API surface "
-        "changed and this function has not been rewritten yet.\n"
-        "\n"
+        "Video generation is not supported in call-kie.py.\n"
         "Use call-wavespeed.py instead:\n"
-        "  python scripts/call-wavespeed.py video \\\n"
-        "    --model seedance-pro \\\n"
-        "    --start <start_url> \\\n"
-        "    --end <end_url> \\\n"
-        "    --prompt '...' \\\n"
-        "    --duration 5 --aspect 16:9\n"
-        "\n"
-        "Verified working paths on Wavespeed:\n"
-        "  - bytedance/seedance-v1-pro-i2v-480p (supports start+end frame)\n"
-        "  - google/veo3-fast/image-to-video (duration must be 4, 6, or 8)\n"
+        "  python scripts/call-wavespeed.py video --model seedance-pro "
+        "--start URL --end URL --prompt '...' --duration 5\n"
     )
 
 
-def _generate_video_stale(
-    start_image_url: str,
-    prompt: str,
-    end_image_url: str | None = None,
-    duration_seconds: int = 5,
-    aspect_ratio: str = "16:9",
-    size: str = "high",
-    model: str = "kling3",
-) -> str:
-    """STALE — kept for reference only when rewriting against current Kie API.
-
-    The old implementation assumed /videos/generations + task-id polling at
-    /tasks/{id}. Both returned 404 in the 2026-04 production test. Do not
-    call this — it will fail. Marked with underscore prefix to prevent
-    accidental use.
-    """
-    n_frames = 10 if duration_seconds <= 5 else 15
-    model_info = VIDEO_MODELS.get(model, {})
-    supports_end = model_info.get("supports_end_frame", False)
-
-    body = {
-        "model": model,
-        "prompt": prompt,
-        "start_image": start_image_url,
-        "aspect_ratio": aspect_ratio,
-        "size": size,
-        "n_frames": n_frames,
-        "duration": duration_seconds,
-        "enhance": False,
-    }
-    if supports_end and end_image_url:
-        body["end_image"] = end_image_url
-
-    result = _post("/videos/generations", body)
-    task_id = result.get("task_id") or result.get("id")
-    if task_id:
-        result = _poll(task_id, interval=15, max_wait=1800)
-    return result.get("video_url") or result.get("output")
-
+# --------------------------------------------------------------------------
+# Download
+# --------------------------------------------------------------------------
 
 def download(url: str, dest: Path) -> Path:
-    """Download a file from a URL to a local path. Result URLs are temporary per memory."""
+    """Download a file from a URL. Kie result URLs are temporary — download immediately."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(url, timeout=120) as resp:
         dest.write_bytes(resp.read())
     return dest
 
 
+# --------------------------------------------------------------------------
+# CLI
+# --------------------------------------------------------------------------
+
 def _cli() -> None:
-    parser = argparse.ArgumentParser(description="Kie.ai NanoBanana + Kling wrapper")
+    parser = argparse.ArgumentParser(
+        description="Kie.ai image generation — Nano Banana Pro / 2 / Edit"
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    img = sub.add_parser("image", help="Generate image(s) via NanoBanana 2")
+    # Image generation
+    img = sub.add_parser("image", help="Generate image(s) via Nano Banana Pro (default) or Nano Banana 2")
     img.add_argument("--prompt", required=True)
+    img.add_argument("--model", default="nano-banana-pro", choices=list(IMAGE_MODELS.keys()))
     img.add_argument("--aspect", default="16:9")
-    img.add_argument("--size", default="high", choices=["standard", "high"])
-    img.add_argument("--n", type=int, default=4)
+    img.add_argument("--resolution", default="2K", choices=["1K", "2K", "4K"])
+    img.add_argument("--format", default="png", choices=["png", "jpg"])
+    img.add_argument("--ref-image", action="append", default=[], help="Reference image URL (can repeat)")
     img.add_argument("--out", default=".")
 
-    vid = sub.add_parser(
-        "video",
-        help="BROKEN — use call-wavespeed.py video instead. Kept only to surface a clear error."
-    )
-    vid.add_argument("--start", required=True, help="start image URL")
-    vid.add_argument("--end", default=None, help="end image URL (Kling only; ignored for Veo)")
-    vid.add_argument("--prompt", required=True)
-    vid.add_argument("--duration", type=int, default=5)
-    vid.add_argument("--aspect", default="16:9")
-    vid.add_argument("--model", default="kling3", choices=list(VIDEO_MODELS.keys()))
-    vid.add_argument("--out", default=".")
+    # Image editing
+    ed = sub.add_parser("edit", help="Edit image(s) via Nano Banana Edit")
+    ed.add_argument("--prompt", required=True)
+    ed.add_argument("--image", required=True, action="append", help="Input image URL (can repeat)")
+    ed.add_argument("--image-size", default="16:9")
+    ed.add_argument("--format", default="png", choices=["png", "jpeg"])
+    ed.add_argument("--out", default=".")
 
     args = parser.parse_args()
 
     if args.cmd == "image":
         urls = generate_image(
             prompt=args.prompt,
+            model=args.model,
             aspect_ratio=args.aspect,
-            size=args.size,
-            n=args.n,
+            resolution=args.resolution,
+            output_format=args.format,
+            reference_images=args.ref_image or None,
         )
         for i, url in enumerate(urls):
-            dest = Path(args.out) / f"image-{i+1}.webp"
+            print(f"URL: {url}")
+        for i, url in enumerate(urls):
+            dest = Path(args.out) / f"image-{i+1}.{args.format}"
             download(url, dest)
             print(f"Downloaded: {dest}")
 
-    elif args.cmd == "video":
-        url = generate_video(
-            start_image_url=args.start,
-            end_image_url=args.end,
+    elif args.cmd == "edit":
+        urls = edit_image(
             prompt=args.prompt,
-            duration_seconds=args.duration,
-            aspect_ratio=args.aspect,
-            model=args.model,
+            image_urls=args.image,
+            image_size=args.image_size,
+            output_format=args.format,
         )
-        dest = Path(args.out) / "hero.mp4"
-        download(url, dest)
-        print(f"Downloaded: {dest}")
+        for i, url in enumerate(urls):
+            print(f"URL: {url}")
+        for i, url in enumerate(urls):
+            dest = Path(args.out) / f"edit-{i+1}.{args.format}"
+            download(url, dest)
+            print(f"Downloaded: {dest}")
 
 
 if __name__ == "__main__":
