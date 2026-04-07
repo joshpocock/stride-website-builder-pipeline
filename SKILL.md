@@ -212,9 +212,22 @@ If `agent-browser` is not installed, ask:
 
 ## Phase 4: Asset Generation
 
-**Critical rule: generate assets for EVERY placement the user selected in Q10a, not just the first one.** If they picked "hero background video" AND "scroll-driven frame-by-frame," that's two separate generation passes with two separate sets of image variants, animation style options, and videos. Do not skip a placement because you already generated something for another. Each placement is a distinct deliverable.
+**When to run this phase:** Phase 4 runs if Q10a selected ANY of these placements:
+- ✓ "Hero background video" → generate hero image + video (autoplay MP4)
+- ✓ "Scroll-driven frame-by-frame" → generate start/end images + video + ffmpeg frame extraction
+- ✓ "Section accent video" → generate image + short video per section
+- ✗ If Q10a = "Static images only" or "I have my own MP4(s)" → **skip Phase 4 entirely**
 
-**For each image placement:** always generate 4-5 variants and present them to the user for selection. Never generate 1 and move on. After they pick an image, present 4-5 animation style options tailored to that specific image (see Q10e in `references/survey-questions.md`). Then generate the video. This is the "show options → user picks → generate" flow that must happen per-placement.
+**Q10 answer mapping — read the user's Q10 answers and use them here:**
+- Q10a (placements) = WHAT to generate. Each selected placement is a separate deliverable.
+- Q10b (model) = WHICH video model to use: Kling 3.0 via Kie (`scripts/call-kie.py video`) or Seedance/Veo via Wavespeed (`scripts/call-wavespeed.py video`)
+- Q10c (prompt) = WHERE the video prompt comes from: AI writes / user writes / auto
+- Q10d (playback mode) = HOW the video plays: autoplay MP4 or scroll-driven canvas with extracted frames
+- Q10e (animation style) = the specific animation concept, presented during this phase after images are picked
+
+**The pipeline for each placement is: generate 4-5 images → user picks → present 4-5 animation styles → user picks → generate video → if scroll-driven: extract frames with ffmpeg.** This is the ONLY way to create video/animation content. Do NOT code animations by hand (no terminal typewriters, no CSS-only parallax, no framer-motion scroll sequences) — the skill uses AI-generated images and video, not hand-coded components. The only code you write is the playback component (`<video>` tag for autoplay, or the canvas scroll scrubber for frame-by-frame).
+
+**Generate for EVERY placement** the user selected in Q10a, not just the first one. Two placements = two full pipeline runs.
 
 ### 4a. Image Generation (per placement)
 
@@ -401,11 +414,15 @@ Dev server spins up when done. User verifies, gives feedback, skill iterates.
 
 **If `agent-browser` is NOT installed**, don't silently skip. Ask the user:
 > agent-browser is not installed, so I can't do automated visual verification. Options:
-> 1. Install it now (`npm install -g agent-browser && agent-browser install`) and I'll verify
-> 2. Skip automated verification — I'll tell you what to check manually
-> 3. Continue to Phase 7 without verifying
+> 1. Install it now (`npm install -g agent-browser && agent-browser install`) and I'll run automated checks
+> 2. I'll do manual verification instead — I'll print a checklist of what to check and wait for your confirmation
 
-If they pick option 2, print a manual checklist: check hero renders, check mobile viewport, check CTA works, check no horizontal scroll.
+Both options execute Phase 6.5. There is no "skip verification" option — the user must either run automated checks or confirm manual checks before proceeding to Phase 7. If they pick option 2, print this checklist and wait for them to confirm each item:
+- [ ] Hero renders correctly (video plays or static image shows)
+- [ ] Mobile viewport (375px): no horizontal scroll, tap targets >= 44px, video replaced with poster
+- [ ] Primary CTA works (opens form, mailto, or target page)
+- [ ] All sections visible in correct order
+- [ ] No console errors in browser dev tools
 
 ---
 
@@ -422,22 +439,7 @@ The SEO pass does:
 5. **Semantic HTML5** — ensure `<main>`, `<article>`, `<section>`, `<nav>`, `<header>`, `<footer>` landmarks
 6. **Core Web Vitals** — verify LCP <2.5s, CLS <0.1, INP <200ms
 7. **Lighthouse audit** — run `lighthouse --output=json` via CLI, report scores
-8. **Analytics injection (conditional on env vars, silent if unset):**
-   - If `GA4_MEASUREMENT_ID` is set → inject the GA4 gtag snippet into `<head>`:
-     ```html
-     <script async src="https://www.googletagmanager.com/gtag/js?id={{GA4_MEASUREMENT_ID}}"></script>
-     <script>
-       window.dataLayer = window.dataLayer || [];
-       function gtag(){dataLayer.push(arguments);}
-       gtag('js', new Date());
-       gtag('config', '{{GA4_MEASUREMENT_ID}}');
-     </script>
-     ```
-   - If `PLAUSIBLE_DOMAIN` is set → inject the Plausible snippet into `<head>`:
-     ```html
-     <script defer data-domain="{{PLAUSIBLE_DOMAIN}}" src="https://plausible.io/js/script.js"></script>
-     ```
-   - Both can be set simultaneously — inject both. If neither is set, skip this step silently (no user-facing message, no error). Log which were injected in `build-log.md` for Phase 9.
+8. **Analytics injection** — if `GA4_MEASUREMENT_ID` or `PLAUSIBLE_DOMAIN` env vars are set, inject their tracking snippets into `<head>`. Both can coexist. Silent no-op if neither set. See `references/build-prompts/seo-pass.md` for the exact snippet templates.
 
 Full 2026 SEO reference lives at `references/seo-research-2026.md`.
 

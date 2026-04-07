@@ -198,3 +198,27 @@ Print a summary:
 - `{{location}}`, `{{nap}}`, `{{service_type}}` (if LocalBusiness)
 
 The skill asks for these in Phase 7 start if not already captured.
+
+---
+
+## Analytics Injection (conditional on env vars)
+
+Inject tracking snippets into `<head>` if the corresponding env var is set. Silent no-op if unset.
+
+**GA4 (if `GA4_MEASUREMENT_ID` is set):**
+```html
+<script async src="https://www.googletagmanager.com/gtag/js?id={{GA4_MEASUREMENT_ID}}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{GA4_MEASUREMENT_ID}}');
+</script>
+```
+
+**Plausible (if `PLAUSIBLE_DOMAIN` is set):**
+```html
+<script defer data-domain="{{PLAUSIBLE_DOMAIN}}" src="https://plausible.io/js/script.js"></script>
+```
+
+Both can be set simultaneously — inject both. Log which were injected in `build-log.md` for Phase 9 learnings.
