@@ -196,8 +196,9 @@ Don't stack multiple aesthetic-opinion skills — they give contradictory signal
 
 **Slot 3 — Utility:**
 If `agent-browser` is not installed, ask:
-> agent-browser (Vercel Labs) is not installed. It's used in Phase 6.5 for automated visual verification — desktop/mobile screenshots, accessibility tree checks, and a self-correcting fix loop.
-> Install into this project? `git clone https://github.com/vercel-labs/agent-browser .claude/skills/agent-browser` [Y/n]
+> agent-browser (Vercel Labs) is not installed. It's a Rust CLI used in Phase 6.5 for automated visual verification — desktop/mobile screenshots, accessibility tree checks, and a self-correcting fix loop.
+> Install globally? `npm install -g agent-browser && agent-browser install` [Y/n]
+> (This is a system binary, not a Claude Code skill — it installs globally via npm, not into .claude/skills/)
 
 **Step 3 — Run confirmed installs one at a time.** After each install, verify it succeeded (check the skills directory for the new folder) before moving to the next. If an install fails, tell the user the error and offer to skip that skill — don't block the pipeline.
 
@@ -382,6 +383,28 @@ Dev server spins up when done. User verifies, gives feedback, skill iterates.
 
 ---
 
+## Phase 6.5: Visual Verification (agent-browser)
+
+**Do not skip this phase.** Read `references/build-prompts/verify-build.md` and execute the full verification flow against the running dev server. This phase catches broken scroll animations, missing mobile fallbacks, inaccessible tap targets, and layout issues before the user sees them.
+
+**If `agent-browser` CLI is installed** (check with `which agent-browser`):
+1. Run Phase A (desktop screenshots + accessibility tree) from `verify-build.md`
+2. Run Phase B (mobile viewport + video suppression check)
+3. Run Phase C (interaction tests — CTA, form fill, navigation)
+4. Run Phase D (Lighthouse if available)
+5. For each failure, run the fix loop (max 5 cycles) and re-verify
+6. Print the final verification report
+
+**If `agent-browser` is NOT installed**, don't silently skip. Ask the user:
+> agent-browser is not installed, so I can't do automated visual verification. Options:
+> 1. Install it now (`npm install -g agent-browser && agent-browser install`) and I'll verify
+> 2. Skip automated verification — I'll tell you what to check manually
+> 3. Continue to Phase 7 without verifying
+
+If they pick option 2, print a manual checklist: check hero renders, check mobile viewport, check CTA works, check no horizontal scroll.
+
+---
+
 ## Phase 7: SEO Optimization Pass
 
 Read `references/build-prompts/seo-pass.md` and invoke it on the built site.
@@ -418,6 +441,14 @@ User sees the Lighthouse scores and any issues before deploy.
 
 ---
 
+## Phase 7.5: Re-verify After SEO Changes
+
+Re-run the Phase 6.5 verification flow (read `references/build-prompts/verify-build.md` again) against the dev server after the SEO pass. The SEO pass modifies layout (semantic HTML changes), adds scripts (GA4, Plausible), and restructures images (AVIF conversion, lazy-loading) — all of which can introduce visual regressions or performance changes. Quick re-verify catches these before deploy.
+
+If agent-browser is not installed and the user chose to skip verification in Phase 6.5, skip this phase too (don't re-ask).
+
+---
+
 ## Phase 8: Deploy
 
 Based on Q11:
@@ -428,6 +459,16 @@ Based on Q11:
 - **Manual:** skip deploy, show build output dir
 
 Confirm URL works, show final metrics, celebrate.
+
+---
+
+## Phase 8.5: Production Verification
+
+If the site was deployed (not manual/skip), run a final agent-browser verification pass against the **live production URL** (not localhost). This catches deployment-specific issues: missing env vars on the hosting platform, CDN caching of stale assets, HTTPS redirect issues, DNS propagation delays, and CORS errors on fonts/images that worked locally.
+
+Same flow as Phase 6.5 but against the live URL. If any checks fail, tell the user what's wrong and whether it's a deploy config issue (their side) or a code issue (fixable).
+
+If agent-browser is not installed and user previously opted to skip verification, skip this too.
 
 ---
 
