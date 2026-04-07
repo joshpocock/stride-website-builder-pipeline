@@ -308,7 +308,8 @@ Never generate just one variant and move on. Never skip a placement. Always give
 - FAQ
 - CTA / Contact Form
 - Gallery / Portfolio
-- Blog preview
+- Blog preview (3 recent posts on the landing page)
+- **Blog (full system)** — listing page + individual post pages + content system. See Q11b below.
 - **+ Add your own** (free-text field — type any custom section name, comma-separated for multiple)
 - Let AI decide everything
 
@@ -317,6 +318,42 @@ Never generate just one variant and move on. Never skip a placement. Always give
 - Portfolio → Hero, Gallery, About, Contact
 - Multi-page service business → Hero, Services, About, Testimonials, Contact
 - Full app → Hero, Features, Pricing, CTA
+- Content creator / personal brand → Hero, About, Content/Services, Blog (full system), Academy/Community CTA
+
+---
+
+### Q11b: Blog System (only if Q11 selected "Blog (full system)")
+
+**question:** "How should the blog content be managed?"
+**header:** "Blog content system"
+**options:**
+- **Markdown files** (default, recommended) — one `.md` file per post in `content/blog/`, frontmatter for metadata (title, date, excerpt, slug, thumbnail, tags). Zero dependencies, bulk-import friendly (a Python script can generate hundreds of posts), git-versioned, works with every framework (Next.js `generateStaticParams`, Astro content collections, Nuxt content module). Best for solo creators and AI content pipelines.
+- **MDX files** — same as Markdown but with embedded React/Vue components for interactive demos, code playgrounds, or custom widgets. Slightly more tooling. Best for technical blogs.
+- **CMS** (mention as an upgrade path, don't set up) — Sanity, Contentful, or Strapi for teams with non-technical editors who need WYSIWYG, scheduling, and drafts. Tell the user: *"I can set up the blog with markdown files now, and you can migrate to a CMS later when you need multi-author or non-technical editing. The page components won't change — only the data source."*
+- Let AI decide → pick Markdown files
+
+**If Markdown or MDX selected, the blog system includes:**
+1. `content/blog/` directory with 2-3 sample posts as `.md` files with frontmatter:
+   ```yaml
+   ---
+   title: "Post Title"
+   date: "2026-04-07"
+   excerpt: "Brief description for cards and SEO"
+   slug: "post-title"
+   thumbnail: "/blog/post-title-thumb.jpg"  # optional
+   videoId: "abc123"  # optional YouTube embed
+   tags: ["tag1", "tag2"]
+   type: "article"  # or "transcript" for auto-generated content
+   ---
+
+   Post content in markdown...
+   ```
+2. `src/lib/blog.ts` (or framework equivalent) — reads files from disk, parses frontmatter with `gray-matter` or equivalent, returns typed post objects
+3. `/blog` listing page — calls `getAllPosts()`, shows cards with title/date/excerpt/thumbnail, sorted by date, optional tag filtering
+4. `/blog/[slug]` post page — calls `getPostBySlug(slug)`, renders markdown to HTML via `remark`/`rehype` or framework built-in, includes SEO metadata from frontmatter (`generateMetadata` in Next.js)
+5. Blog preview section on the landing page (if also selected in Q11) — shows the 3 most recent posts with "View all →" link to `/blog`
+
+**Why NOT JS/JSON for blog content:** embedding posts as JavaScript objects in source files doesn't scale past ~20 posts — you end up with a 50,000+ line TypeScript file, merge conflicts on every addition, and no way to bulk-generate. Content and code should be separate.
 
 ---
 
