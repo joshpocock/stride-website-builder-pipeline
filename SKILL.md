@@ -253,7 +253,47 @@ Generate two image prompts from the survey answers (product, vibe, brand colors)
 
 3. **Else → ERROR.** Tell the user to set one of the two keys in `.env` before rerunning. Do not try to proceed without image generation.
 
-Show generated images to the user (4 start variants + 4 end variants if using true batching, or 1 of each if Gemini 3 Pro), ask them to pick one of each. Offer to regenerate with feedback if none are satisfactory. Download picked ones to `project/assets/`.
+**Image selection flow (mandatory per placement — do not skip):**
+
+For each image placement (hero bg, scroll start frame, scroll end frame, section accent):
+
+1. **Generate 4-5 variants.** Use different seeds or slight prompt variations so the user has real choices. If Gemini 3 Pro (1 per call), issue 4-5 calls. If Nano Banana Pro (supports batching), issue 1 call with n=4.
+
+2. **Present ALL variants to the user via AskUserQuestion:**
+   > Here are 5 options for your [hero image / scroll start frame / etc.]:
+   > 1. [describe variant 1 — composition, lighting, mood]
+   > 2. [describe variant 2]
+   > 3. [describe variant 3]
+   > 4. [describe variant 4]
+   > 5. [describe variant 5]
+   > Pick a number, say "AI choose" for me to pick the strongest, or describe what you'd change.
+
+3. **If user says "AI choose"** → pick the variant with the best composition (centered subject, clean background, brand-appropriate lighting) and tell them which you picked and why.
+
+4. **If user says "upload my own"** → accept their image URL or file path.
+
+5. **If user doesn't like any** → ask what to change, regenerate with adjusted prompts, repeat.
+
+6. **Download the picked image** to `project/assets/`. Move to the next placement.
+
+**Then for each VIDEO placement**, present animation style options:
+
+1. **Generate 4-5 animation concept descriptions** tailored to the specific picked image (not generic). Example for a solar panel image:
+   > Here are 5 animation ideas for your scroll-driven section:
+   > 1. Panels installing one by one onto the roof, frame by frame as user scrolls
+   > 2. Camera slowly orbiting the completed installation, golden hour shift
+   > 3. Day-to-night timelapse — panels power on, house lights glow warm at dusk
+   > 4. Storm rolls in, then clears to sunny sky — resilience narrative
+   > 5. Zoom from street level up to rooftop, revealing the full solar array
+   > Pick a number, say "AI choose", or describe your own idea.
+
+2. **Same selection flow** — user picks, AI chooses, or user describes their own.
+
+3. **Generate the video** using the picked animation style + the picked start image (and end image if applicable).
+
+4. **If scroll-driven playback mode** → extract frames with ffmpeg after video generation.
+
+This "show options → user picks → generate" flow runs for EVERY placement. Two placements = two rounds of image selection + two rounds of animation selection. Never generate one thing and move on without asking.
 
 ### 4a.5 Lock-Pair Matching Pass — CURRENTLY BROKEN (skip)
 
