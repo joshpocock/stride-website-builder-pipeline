@@ -212,7 +212,11 @@ If `agent-browser` is not installed, ask:
 
 ## Phase 4: Asset Generation
 
-### 4a. Hero Start + End Frames
+**Critical rule: generate assets for EVERY placement the user selected in Q10a, not just the first one.** If they picked "hero background video" AND "scroll-driven frame-by-frame," that's two separate generation passes with two separate sets of image variants, animation style options, and videos. Do not skip a placement because you already generated something for another. Each placement is a distinct deliverable.
+
+**For each image placement:** always generate 4-5 variants and present them to the user for selection. Never generate 1 and move on. After they pick an image, present 4-5 animation style options tailored to that specific image (see Q10e in `references/survey-questions.md`). Then generate the video. This is the "show options → user picks → generate" flow that must happen per-placement.
+
+### 4a. Image Generation (per placement)
 
 Generate two image prompts from the survey answers (product, vibe, brand colors) using `references/build-prompts/image-gen-nanobanana.md` as the fill-in template and `references/build-prompts/cinematic-frame-method.md` as the underlying framework for non-standard projects.
 

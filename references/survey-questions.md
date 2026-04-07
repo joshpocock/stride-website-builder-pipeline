@@ -146,13 +146,13 @@ Used to tune copy tone, imagery style, section emphasis, and AI-suggested vibe.
 
 ---
 
-## Q9: Hero Images
+## Q9: Image Generation
 
-This question handles **all generated imagery for the site** — hero images, product shots, section accents. Three sub-axes.
+This question handles **all generated imagery for the site** — hero backgrounds, scroll animation frames, product shots, section accents. Covers source, prompts, and the selection process.
 
 ### Q9a: Image Source
 
-**question:** "How do you want the hero images?"
+**question:** "How do you want images for the site?"
 **header:** "Image source"
 **options:**
 - AI generates from scratch (I give Claude the prompt framework, it creates them) — *Recommended*
@@ -168,6 +168,20 @@ This question handles **all generated imagery for the site** — hero images, pr
 - AI writes them using the 6-stage Cinematic Frame Method (ANCHOR / WORLD / LUMINANCE / AIR / OPTICS / EXCLUSIONS) — *Recommended*
 - I'll write my own prompts
 - Let AI decide
+
+### Q9c: Selection Process — ALWAYS show options, ALWAYS let user pick
+
+**This is critical and must not be skipped.** For every image placement on the site (hero background, scroll animation start/end frames, section accents), generate **4-5 variants** and present ALL of them to the user with thumbnails/descriptions. The user picks their favorite — or says "let AI choose" to auto-pick the best one.
+
+**Concrete flow per image placement:**
+1. Generate 4-5 variants with different seeds/angles/compositions
+   - If using Gemini 3 Pro (returns 1 per call): issue 4-5 separate calls with different seeds. Costs 4-5 × $0.025 = $0.10–0.125 per placement.
+   - If using Nano Banana Pro (supports batching): issue 1 call with n=4 or n=5
+2. Present all variants to the user: *"Here are 5 options for your hero image. Pick one, or say 'AI choose' and I'll pick the strongest composition."*
+3. If user doesn't like any: *"Want me to regenerate with different prompts, or describe what you'd like changed?"*
+4. Download the picked image. Move to the next placement.
+
+**Do this for EACH placement** — hero background, scroll animation start frame, scroll animation end frame (if different from start), section accents. Each placement gets its own 4-5 variants and its own selection step. Do not reuse the same image for multiple placements unless the user explicitly asks.
 
 ### Q9c: Image Model (auto, not a user question unless override requested)
 
@@ -242,6 +256,31 @@ This is critical — the two modes have completely different asset pipelines and
 - Section accent video → usually **Autoplay MP4** (shorter, ambient)
 
 **If both modes are used on the same page**, generate separate videos for each — don't try to reuse the same MP4 for both autoplay and frame extraction (different compression needs, different aspect ratios, different content).
+
+### Q10e: Animation Style Options (presented AFTER images are generated in Phase 4)
+
+**This step happens during Phase 4, not during the survey** — it requires the actual generated images to make the options concrete. After the user has picked their images in Q9c's selection flow, present **4-5 animation style options tailored to the specific chosen image** for each video placement.
+
+**Concrete flow per video placement:**
+1. Look at the picked image(s) for this placement
+2. Generate 4-5 animation concept descriptions that are specific to that image (not generic). Examples for a solar panel installation image:
+   - *Option A: Panels installing one by one onto the roof, frame by frame as the user scrolls*
+   - *Option B: Camera slowly orbiting the completed installation, golden hour lighting shifts*
+   - *Option C: Day-to-night timelapse — the panels power on and the house lights glow warm at dusk*
+   - *Option D: Storm rolls in over the roof, then clears to sunny sky — resilience narrative*
+   - *Option E: Let AI pick the most cinematic option*
+3. User picks one. If they don't like any: *"Describe what you'd want and I'll generate it."*
+4. Generate the video using the picked style + the picked image as the start frame
+5. If the placement is scroll-driven frame-by-frame, also extract frames via ffmpeg after the video is generated
+
+**This must happen for EVERY video placement the user selected in Q10a.** If they picked "hero background video" AND "scroll-driven frame-by-frame" → two separate rounds of animation style options, two separate video generations, two separate assets. Do not skip a placement because you already generated something for a different one.
+
+**What the user should always be asked for each video/animation placement:**
+1. Pick from 4-5 image variants (Q9c)
+2. Pick from 4-5 animation style options tailored to that image (Q10e)
+3. See the result and approve or request changes
+
+Never generate just one variant and move on. Never skip a placement. Always give choices. Always do what the user says.
 
 **Reference for scroll-driven implementation:** The correct pattern (discovered and verified in production):
 1. `ffmpeg -i hero.mp4 -vf "fps=15,scale=1920:-1" -q:v 80 frames/frame-%03d.webp` — extract ~60-100 frames at 15fps as WebP
